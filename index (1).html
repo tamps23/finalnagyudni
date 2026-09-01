@@ -1,0 +1,1920 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>V-Security Pro | Enhanced Vehicle Management</title>
+    <!-- CDNs for required libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root { 
+            --sidebar-bg: rgba(255, 255, 255, 0.7); 
+            --active-blue: #3730a3; 
+            --text-dark: #1e293b;
+            --text-muted: #475569;
+            --glass: rgba(255, 255, 255, 0.8);
+            --glass-border: rgba(255, 255, 255, 0.6);
+        }
+        
+        * { box-sizing: border-box; }
+
+        #bg-canvas {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -2; 
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            background-size: cover; background-position: center;
+            transition: filter 0.5s ease, transform 0.5s ease;
+        }
+
+        body { font-family: 'DM Sans', sans-serif; margin: 0; background: transparent; color: var(--text-dark); overflow-x: hidden; letter-spacing: -0.01em; }
+        
+        #auth-container { 
+            background: rgba(15, 23, 42, 0.05);
+            height: 100vh; display: flex; align-items: center; justify-content: center; 
+            position: fixed; width: 100%; z-index: 2000; 
+        }
+
+        .liquid-glass-card { 
+            background: rgba(255, 255, 255, 0.65); padding: 3rem; 
+            width: 100%; max-width: 460px; backdrop-filter: blur(24px) saturate(200%); 
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255,255,255,0.8);
+            text-align: center; position: relative;
+            animation: liquidFlow 12s ease-in-out infinite;
+            transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+            border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
+        }
+
+        /* Liquid falling highlight on the edges */
+        .liquid-glass-card::before {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            background: linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.7) 50%, rgba(255,255,255,0) 100%);
+            background-size: 100% 200%;
+            animation: edgeDrip 6s linear infinite;
+            border-radius: inherit;
+            z-index: -1;
+            filter: blur(4px);
+        }
+
+        /* Stabilize when interacting */
+        .liquid-glass-card:focus-within, .liquid-glass-card:active {
+            animation-play-state: paused;
+            transform: translate(0, 0) scale(1.02);
+            border-radius: 32px;
+        }
+
+        @keyframes liquidFlow {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); border-radius: 40% 60% 70% 30% / 40% 40% 60% 50%; }
+            33% { transform: translate(8px, -15px) rotate(1deg); border-radius: 60% 40% 50% 50% / 50% 60% 40% 60%; }
+            66% { transform: translate(-8px, 10px) rotate(-1deg); border-radius: 45% 55% 45% 55% / 55% 45% 55% 45%; }
+        }
+
+        @keyframes edgeDrip {
+            0% { background-position: 0% -100%; }
+            100% { background-position: 0% 100%; }
+        }
+
+        .glass-input {
+            background: rgba(255, 255, 255, 0.8) !important;
+            border: 1px solid rgba(203, 213, 225, 0.5) !important;
+            border-radius: 14px !important; padding: 14px 20px !important; margin-bottom: 14px;
+            font-family: 'DM Sans', sans-serif;
+        }
+        .glass-input:focus { outline: none !important; border-color: var(--active-blue) !important; box-shadow: 0 0 0 4px rgba(55, 48, 163, 0.1) !important; }
+
+        .btn-liquid-login {
+            background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%); color: white; border: none; border-radius: 14px; 
+            padding: 14px 48px; font-weight: 700; font-family: 'DM Sans', sans-serif;
+            box-shadow: 0 10px 15px -3px rgba(79, 70, 229, 0.3);
+            transition: transform 0.2s, box-shadow 0.2s;
+            letter-spacing: 0.01em;
+        }
+        .btn-liquid-login:hover { transform: translateY(-1px); box-shadow: 0 20px 25px -5px rgba(79, 70, 229, 0.4); }
+
+        .sidebar { 
+            background: rgba(255, 255, 255, 0.45); width: 270px; height: 94vh; position: fixed; 
+            top: 3vh; left: 16px; border-radius: 22px; backdrop-filter: blur(28px); 
+            border: 1px solid var(--glass-border); z-index: 1000;
+            display: flex; flex-direction: column; transition: all 0.35s cubic-bezier(0.4,0,0.2,1);
+        }
+        .sidebar.minimized { width: 58px; }
+        .sidebar.minimized .brand, .sidebar.minimized .nav-link span:not(.material-icons-round) { display: none; }
+        .sidebar.minimized .nav-link { justify-content: center; padding: 13px; }
+
+        .main-content { margin-left: 306px; padding: 36px; min-height: 100vh; transition: all 0.35s cubic-bezier(0.4,0,0.2,1); }
+        .main-content.maximized { margin-left: 74px; padding: 24px 28px; }
+
+        .nav-link { 
+            color: #64748b; padding: 13px 18px; margin: 6px 12px; border-radius: 14px;
+            display: flex; align-items: center; gap: 14px; cursor: pointer; text-decoration: none !important; 
+            font-weight: 600; font-size: 0.9rem; transition: all 0.2s; letter-spacing: 0.01em;
+        }
+        .nav-link:hover { background: rgba(255,255,255,0.6); color: var(--active-blue); }
+        .nav-link.active { background: white; color: var(--active-blue); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+
+        .view-section { display: none; }
+        .view-section.active { display: block; animation: fadeIn 0.4s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+        .glass-card { border: 1px solid var(--glass-border); border-radius: 22px; background: rgba(255,255,255,0.8); backdrop-filter: blur(16px); }
+        .card { border: 1px solid rgba(255,255,255,0.6); border-radius: 20px; background: rgba(255,255,255,0.85); backdrop-filter: blur(14px); box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+
+        .dashboard-card {
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(255,255,255,0.5);
+            border-radius: 24px; backdrop-filter: blur(14px);
+            transition: transform 0.25s, box-shadow 0.25s;
+            position: relative; overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+        .dashboard-card::after {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+            background: var(--active-blue); opacity: 0.8;
+        }
+        .dashboard-card:hover { transform: translateY(-4px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); }
+
+        h1, h2, h3, h4, h5, h6 { color: var(--text-dark); text-shadow: 0 1px 1px rgba(255,255,255,0.5); }
+
+        .chart-container {
+            background: rgba(255,255,255,0.9); border-radius: 24px; padding: 26px;
+            backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.4);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+        }
+
+        .dashboard-header {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            color: white; padding: 32px 36px; border-radius: 24px; margin-bottom: 30px;
+            position: relative; overflow: hidden; display: flex; justify-content: space-between; align-items: flex-start;
+        }
+        .dashboard-header h1 { font-weight: 800; font-size: 1.7rem; margin: 0 0 6px; letter-spacing: -0.02em; }
+        .dashboard-header p { opacity: 0.85; margin: 0; font-size: 0.95rem; }
+        .dashboard-header::before {
+            content: ''; position: absolute; top: -60%; left: -20%; width: 50%; height: 220%;
+            background: rgba(255,255,255,0.06); border-radius: 50%; transform: rotate(-20deg);
+        }
+
+        .maximize-btn {
+            position: absolute; top: 18px; right: 18px;
+            background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.35);
+            border-radius: 50%; width: 38px; height: 38px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: all 0.2s; z-index: 10; color: white;
+        }
+        .maximize-btn:hover { background: rgba(255,255,255,0.35); transform: scale(1.08); }
+
+        .registry-badge {
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 18px; padding: 14px; cursor: pointer; transition: all 0.22s;
+            display: flex; align-items: center; gap: 13px; position: relative;
+        }
+        .registry-badge:hover { background: white; transform: scale(1.02); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+        .registry-thumb { width: 46px; height: 46px; border-radius: 50%; object-fit: cover; border: 2.5px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+
+        .modal-photo { width: 110px; height: 110px; border-radius: 50%; object-fit: cover; border: 3px solid white; box-shadow: 0 8px 20px rgba(0,0,0,0.1); margin-bottom: 12px; }
+
+        /* ---- SCAN POPUP ---- */
+        #scan-popup {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.5);
+            z-index: 3000; padding: 2rem 3.5rem;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            background: rgba(255,255,255,0.5); backdrop-filter: blur(28px);
+            border: 1px solid var(--glass-border); border-radius: 28px;
+            opacity: 0; visibility: hidden;
+            transition: all 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275); text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+        }
+        #scan-popup.show { opacity: 1; visibility: visible; transform: translate(-50%, -50%) scale(1); }
+
+        @keyframes pandaTalk {
+            0%, 100% { transform: scale(1) translateY(0); }
+            50% { transform: scale(1.1) translateY(-5px); }
+        }
+        .panda-speaking { animation: pandaTalk 0.4s infinite ease-in-out; }
+
+        /* ---- MANUAL SPOT ASSIGNMENT MODAL ---- */
+        #spotModal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.3); backdrop-filter: blur(12px); z-index: 5000;
+            align-items: center; justify-content: center;
+        }
+        #spotModal.show { display: flex; }
+        .spot-modal-card {
+            background: rgba(255,255,255,0.9); border-radius: 24px; padding: 2rem;
+            max-width: 420px; width: 90%; backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.8);
+            box-shadow: 0 24px 60px rgba(0,0,0,0.18);
+            animation: popIn 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        @keyframes popIn { from { transform: scale(0.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+        .spot-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 16px 0; }
+        .spot-btn {
+            padding: 8px 4px; border-radius: 10px; border: 1.5px solid #e2e8f0;
+            background: white; font-size: 0.75rem; font-weight: 700; cursor: pointer;
+            transition: all 0.15s; font-family: 'Space Mono', monospace; color: #374151;
+        }
+        .spot-btn:hover { border-color: #2563eb; background: #eff6ff; color: #2563eb; }
+        .spot-btn.occupied { background: #fee2e2; border-color: #fca5a5; color: #dc2626; cursor: not-allowed; }
+        .spot-btn.selected { background: #2563eb; border-color: #1d4ed8; color: white; }
+
+        /* ---- QR SCANNER ---- */
+        #reader { width: 100%; border-radius: 16px; overflow: hidden; background: #000; }
+        #reader video { border-radius: 12px !important; }
+        #html5-qrcode-button-camera-permission,
+        #html5-qrcode-button-camera-start,
+        #html5-qrcode-button-camera-stop { 
+            border-radius: 50px !important; border: none !important;
+            padding: 10px 24px !important; font-family: 'DM Sans', sans-serif !important;
+            font-weight: 700 !important; cursor: pointer !important;
+        }
+        #html5-qrcode-button-camera-start { background: var(--active-blue) !important; color: white !important; }
+        #html5-qrcode-button-camera-stop { background: #ef4444 !important; color: white !important; }
+
+        .scan-status-bar {
+            padding: 12px 18px; border-radius: 14px; font-weight: 600; font-size: 0.9rem;
+            margin-top: 14px; text-align: center; transition: all 0.3s;
+        }
+        .scan-status-bar.ready { background: rgba(241, 245, 249, 0.8); color: #475569; }
+        .scan-status-bar.success { background: #d1fae5; color: #065f46; border: 1px solid #10b981; }
+        .scan-status-bar.error { background: rgba(254,226,226,0.7); color: #991b1b; }
+
+        .manual-entry-section {
+            background: rgba(248,250,252,0.8); border-radius: 16px; padding: 18px;
+            margin-top: 16px; border: 1px dashed rgba(99,102,241,0.3);
+        }
+
+        @media (max-width: 768px) {
+            .main-content { margin-left: 0; padding: 18px; padding-top: 72px; }
+            .main-content.maximized { margin-left: 0; }
+            .sidebar { width: 0; left: -270px; opacity: 0; }
+            .sidebar.minimized { width: 0; left: -270px; opacity: 0; }
+        }
+
+        /* Fix Bootstrap table backgrounds */
+        .table { --bs-table-bg: transparent; color: var(--text-dark); }
+        .table thead th { color: var(--text-muted); font-weight: 700; text-transform: uppercase; font-size: 0.75rem; border-bottom: 2px solid #e2e8f0; }
+        .table tbody tr:hover { background: rgba(255,255,255,0.4); }
+        .form-control, .form-select { font-family: 'DM Sans', sans-serif; border-radius: 12px !important; }
+    </style>
+</head>
+<body>
+
+    <script src="/client-sync.js"></script>
+
+    <!-- QR Details Modal -->
+    <div id="qrDetailsModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.3); backdrop-filter:blur(16px); z-index:4000; align-items:center; justify-content:center;">
+        <div class="liquid-glass-card" style="max-width:500px;">
+            <div class="row mb-3">
+                <div class="col-6 text-center">
+                    <img id="modalPhoto" src="" class="modal-photo" alt="Profile">
+                    <p class="small text-muted">Owner Photo</p>
+                </div>
+                <div class="col-6 text-center">
+                    <img id="modalHelmetPhoto" src="" class="modal-photo" alt="Helmet">
+                    <p class="small text-muted">Helmet Photo</p>
+                </div>
+            </div>
+            <h3 id="modalName" class="fw-bold mb-1"></h3>
+            <span id="modalType" class="badge bg-primary mb-3 rounded-pill px-3"></span>
+            <div class="row mb-3">
+                <div class="col-6">
+                    <div id="modalQrDisplay" class="d-flex justify-content-center bg-white p-2 rounded-3 shadow-sm"></div>
+                    <p class="small text-muted text-center mt-1">Vehicle QR</p>
+                </div>
+                <div class="col-6">
+                    <div id="modalHelmetQrDisplay" class="d-flex justify-content-center bg-white p-2 rounded-3 shadow-sm"></div>
+                    <p class="small text-muted text-center mt-1">Helmet QR</p>
+                </div>
+            </div>
+            <div class="text-start small bg-white bg-opacity-50 p-3 rounded-4 mb-3">
+                <p class="mb-1 text-muted">PLATE NUMBER</p>
+                <p class="fw-bold mb-2" id="modalPlate"></p>
+                <p class="mb-1 text-muted">CONTACT INFO</p>
+                <p class="fw-bold mb-2" id="modalPhone"></p>
+                <p class="mb-1 text-muted">HELMET INFO</p>
+                <p class="fw-bold mb-0" id="modalHelmet"></p>
+            </div>
+            <div class="mb-3 text-start">
+                <p class="mb-1 text-muted small">Car Photos</p>
+                <div id="modalCarPhotos" class="d-flex flex-wrap gap-2" style="min-height:84px; background:rgba(248,250,252,0.85); padding:10px; border-radius:16px; border:1px solid rgba(226,232,240,0.9);"></div>
+            </div>
+            <div class="d-grid gap-2">
+                <button class="btn btn-dark rounded-pill" onclick="closeModal()">Close Details</button>
+                <button class="btn btn-outline-primary btn-sm rounded-pill" id="printUserLogBtn">Print Activity Log</button>
+                <button class="btn btn-outline-danger btn-sm border-0" id="deleteRegistryBtn">Revoke Access</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Manual Spot Assignment Modal -->
+    <div id="spotModal">
+        <div class="spot-modal-card">
+            <h5 class="fw-bold mb-1">Assign Parking Spot</h5>
+            <p class="text-muted small mb-0" id="spotModalSubtitle">Choose a spot for the vehicle</p>
+            <p class="fw-bold mt-1" id="spotModalVehicle" style="color:#2563eb;font-family:'Space Mono',monospace;"></p>
+            
+            <div id="spotModeToggle" class="d-flex gap-2 mb-3">
+                <button class="btn btn-sm btn-outline-primary rounded-pill" onclick="setSpotMode('grid')" id="gridModeBtn">Pick from grid</button>
+                <button class="btn btn-sm btn-outline-secondary rounded-pill" onclick="setSpotMode('custom')" id="customModeBtn">Enter custom</button>
+            </div>
+
+            <div id="spotGridSection">
+                <p class="small text-muted mb-2">Available spots for <strong id="spotTypeLabel"></strong>:</p>
+                <div class="spot-grid" id="spotGrid"></div>
+            </div>
+
+            <div id="spotCustomSection" style="display:none;">
+                <label class="form-label fw-bold small">Enter Spot Label</label>
+                <input type="text" id="customSpotInput" class="form-control" placeholder="e.g. A-12, VIP-3, Gate-B...">
+            </div>
+
+            <div class="d-flex gap-2 mt-3">
+                <button class="btn btn-secondary rounded-pill flex-fill" onclick="cancelSpotAssignment()">Cancel</button>
+                <button class="btn btn-primary rounded-pill flex-fill fw-bold" onclick="confirmSpotAssignment()">Confirm & Log In</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scan Popup -->
+    <div id="scan-popup">
+        <div id="panda-avatar" style="font-size: 80px; margin-bottom: 10px;">🐼</div>
+        <span class="material-icons-round popup-icon" style="font-size:32px; position: absolute; top: 15px; right: 20px;"></span>
+        <h2 id="popup-text" class="fw-bold mt-2" style="color:#2563eb;font-size:1.4rem;"></h2>
+        <p id="popup-subtext" class="text-dark opacity-75 mb-0 small"></p>
+    </div>
+
+    <div id="bg-canvas"></div>
+
+    <!-- Auth -->
+    <div id="auth-container">
+        <div id="login-form" class="liquid-glass-card shadow-lg">
+            <div style="font-weight:800;font-size:1.75rem;margin-bottom:0.25rem;letter-spacing:-0.03em;color:var(--text-dark);">V-Security Pro</div>
+            <p class="text-muted small mb-4">Vehicle & Helmet Access System</p>
+            <input type="email" id="logEmail" class="form-control glass-input" placeholder="Email">
+            <input type="password" id="logPass" class="form-control glass-input" placeholder="Password">
+            <button class="btn btn-liquid-login mt-3 w-100" onclick="handleLogin()">Sign In</button>
+            <p class="mt-4 small text-muted">No account? <a href="#" onclick="toggleAuth(false)" class="fw-bold text-primary">Register</a></p>
+        </div>
+        <div id="signup-form" class="liquid-glass-card" style="display:none">
+            <div style="font-weight:800;font-size:1.5rem;margin-bottom:1.5rem;letter-spacing:-0.02em;">Create Account</div>
+            <input type="text" id="regName" class="form-control glass-input" placeholder="Full Name">
+            <input type="email" id="regEmail" class="form-control glass-input" placeholder="Email">
+            <input type="password" id="regPass" class="form-control glass-input" placeholder="Password">
+            <button class="btn btn-liquid-login mt-2 w-100" onclick="handleSignup()" style="background:#059669;">CREATE ACCOUNT</button>
+            <p class="mt-3 small"><a href="#" onclick="toggleAuth(true)" class="text-muted">← Back to Login</a></p>
+        </div>
+    </div>
+
+    <!-- App -->
+    <div id="app-interface" style="display:none;">
+        <nav class="sidebar">
+            <div class="brand" style="padding:22px 18px 14px;font-weight:800;font-size:1.05rem;letter-spacing:-0.01em;color:#1e3a8a;">V-Security Pro</div>
+            <div class="nav-link active" onclick="showSection('dashboard')"><span class="material-icons-round" style="font-size:20px;">dashboard</span><span>Dashboard</span></div>
+            <div class="nav-link" onclick="showSection('qr-scanner-view')"><span class="material-icons-round" style="font-size:20px;">qr_code_scanner</span><span>QR Management</span></div>
+            <div class="nav-link" onclick="showSection('parking-settings')"><span class="material-icons-round" style="font-size:20px;">settings</span><span>Settings</span></div>
+            <div class="nav-link" onclick="showSection('parking-map-view')"><span class="material-icons-round" style="font-size:20px;">layers</span><span>Parking Map</span></div>
+            <div class="nav-link" onclick="showSection('registry-view')"><span class="material-icons-round" style="font-size:20px;">badge</span><span>Pass Registry</span></div>
+            <div class="nav-link" onclick="showSection('approval-view')"><span class="material-icons-round" style="font-size:20px;">fact_check</span><span>Approvals <span id="approvalBadge" class="badge bg-danger rounded-pill ms-auto" style="display:none; font-size:10px;">0</span></span></div>
+            <div class="nav-link" onclick="showSection('vehicle-logs')"><span class="material-icons-round" style="font-size:20px;">directions_car</span><span>Vehicle Logs</span></div>
+            <div class="nav-link" onclick="showSection('reports-view')"><span class="material-icons-round" style="font-size:20px;">assessment</span><span>Reports</span></div>
+             <div class="nav-link" onclick="window.open('portal.html', '_blank')"><span class="material-icons-round" style="font-size:20px;">launch</span><span>Launch Portal</span></div>
+            <div class="nav-link mt-auto mb-4" onclick="handleLogout()"><span class="material-icons-round" style="font-size:20px;">logout</span><span>Log Out</span></div>
+        </nav>
+
+        <main class="main-content">
+            <!-- Dashboard -->
+            <div id="dashboard" class="view-section active">
+                <div class="dashboard-header">
+                    <div>
+                        <h1>Security Dashboard</h1>
+                        <p>Real-time parking and security monitoring</p>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button class="maximize-btn position-relative top-0 right-0" onclick="toggleMaximize()" id="maximizeBtn">
+                            <span class="material-icons-round" style="font-size:20px;">fullscreen</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="row g-3 mb-4">
+                    <div class="col-6 col-lg-3"><div class="dashboard-card p-3 text-center"><div class="material-icons-round" style="font-size:2rem;opacity:0.6;color:#059669;margin-bottom:6px;">directions_car</div><p class="text-dark mb-1 small fw-bold">Cars</p><h3 id="dashCars" class="fw-bold mb-0" style="color:#059669;">0</h3><span id="status_Cars" class="badge bg-danger rounded-pill mt-1" style="display:none; font-size:0.65rem;">FULL</span></div></div>
+                    <div class="col-6 col-lg-3"><div class="dashboard-card p-3 text-center"><div class="material-icons-round" style="font-size:2rem;opacity:0.6;color:#d97706;margin-bottom:6px;">motorcycle</div><p class="text-dark mb-1 small fw-bold">Motorcycle</p><h3 id="dashMotorcycle" class="fw-bold mb-0" style="color:#d97706;">0</h3><span id="status_Motorcycle" class="badge bg-danger rounded-pill mt-1" style="display:none; font-size:0.65rem;">FULL</span></div></div>
+                    <div class="col-6 col-lg-3"><div class="dashboard-card p-3 text-center"><div class="material-icons-round" style="font-size:2rem;opacity:0.6;color:#0891b2;margin-bottom:6px;">person</div><p class="text-dark mb-1 small fw-bold">Private</p><h3 id="dashPrivate" class="fw-bold mb-0" style="color:#0891b2;">0</h3><span id="status_Private" class="badge bg-danger rounded-pill mt-1" style="display:none; font-size:0.65rem;">FULL</span></div></div>
+                    <div class="col-6 col-lg-3"><div class="dashboard-card p-3 text-center"><div class="material-icons-round" style="font-size:2rem;opacity:0.6;color:#16a34a;margin-bottom:6px;">local_shipping</div><p class="text-dark mb-1 small fw-bold">Deliveries</p><h3 id="dashDeliveries" class="fw-bold mb-0" style="color:#16a34a;">0</h3><span id="status_Deliveries" class="badge bg-danger rounded-pill mt-1" style="display:none; font-size:0.65rem;">FULL</span></div></div>
+                </div>
+                <div class="row g-4">
+                    <div class="col-12"><div class="chart-container"><h5 class="mb-3 text-center fw-bold">Traffic Overview</h5><canvas id="trafficChart" style="max-height:300px;"></canvas></div></div>
+                </div>
+                <div class="row g-4 mt-2">
+                    <div class="col-md-6"><div class="chart-container"><h5 class="mb-3 text-center fw-bold">Entry Types</h5><canvas id="typeChart" style="max-height:260px;"></canvas></div></div>
+                    <div class="col-md-6"><div class="chart-container"><h5 class="mb-3 text-center fw-bold">Parking Capacity</h5><canvas id="parkingStatusChart" style="max-height:260px;"></canvas></div></div>
+                </div>
+                <div class="row g-4 mt-2">
+                    <div class="col-12"><div class="chart-container"><h5 class="mb-3 text-center fw-bold">Helmet Storage</h5><canvas id="helmetStatusChart" style="max-height:260px;"></canvas></div></div>
+                </div>
+            </div>
+
+             <!-- QR Management -->
+             <div id="qr-scanner-view" class="view-section">
+                 <h2 class="fw-bold mb-4">QR Access Control</h2>
+                 <div class="row g-4">
+                     <div class="col-lg-5">
+                         <div class="card p-4">
+                             <h5 class="mb-3 fw-bold">Generate Digital Pass</h5>
+                             <div class="mb-4 d-flex gap-2">
+                                 <label class="btn btn-outline-primary btn-sm rounded-pill flex-fill py-2">
+                                     <span class="material-icons-round align-middle" style="font-size:16px;">add_a_photo</span> Owner
+                                     <input type="file" id="ownerPhotoInput" hidden accept="image/*">
+                                 </label>
+                                 <label class="btn btn-outline-primary btn-sm rounded-pill flex-fill py-2">
+                                     <span class="material-icons-round align-middle" style="font-size:16px;">add_a_photo</span> Helmet
+                                     <input type="file" id="helmetPhotoInput" hidden accept="image/*">
+                                 </label>
+                             </div>
+                             <div class="d-flex gap-2 mb-3">
+                                 <div id="photoPreview" class="small text-muted flex-fill text-center" style="font-size:0.78rem;">No owner photo</div>
+                                 <div id="helmetPhotoPreview" class="small text-muted flex-fill text-center" style="font-size:0.78rem;">No helmet photo</div>
+                             </div>
+                             <input type="text" id="qrName" class="form-control mb-2" placeholder="Owner Name *">
+                             <input type="text" id="qrPlate" class="form-control mb-2" placeholder="Plate Number *">
+                             <input type="text" id="qrPhone" class="form-control mb-2" placeholder="Contact #">
+                             <input type="text" id="qrMessenger" class="form-control mb-2" placeholder="Facebook (Optional)">
+                             <input type="text" id="qrHelmet" class="form-control mb-2" placeholder="Helmet Info (Optional)">
+                             <select id="qrType" class="form-select mb-3">
+                                 <option value="Cars">Cars</option>
+                                 <option value="Motorcycle">Motorcycle</option>
+                                 <option value="Private">Private</option>
+                                 <option value="Deliveries">Deliveries</option>
+                             </select>
+                             <div class="d-flex gap-2">
+                                 <button class="btn btn-light border rounded-pill px-4" onclick="resetGenForm()">Clear</button>
+                                 <button class="btn btn-primary flex-grow-1 fw-bold rounded-pill shadow-sm" onclick="generateCertifiedQR()">Generate Pass</button>
+                             </div>
+                             <div id="qrOutputContainer" class="mt-4 text-center p-3 border rounded-4 d-none bg-white">
+                                 <div class="row">
+                                     <div class="col-6"><h6 class="small fw-bold">Vehicle QR</h6><div id="qrcode-display" class="d-flex justify-content-center mb-2"></div></div>
+                                     <div class="col-6"><h6 class="small fw-bold">Helmet QR</h6><div id="helmet-qrcode-display" class="d-flex justify-content-center mb-2"></div></div>
+                                 </div>
+                                 <p id="qrLabel" class="small fw-bold mb-2"></p>
+                                 <button class="btn btn-sm btn-success w-100 rounded-pill" onclick="printPass()">Print Pass</button>
+                             </div>
+                         </div>
+                     </div>
+                     <div class="col-lg-7">
+                         <div class="card p-4">
+                             <div class="d-flex justify-content-between align-items-center mb-3">
+                                 <h5 class="mb-0 fw-bold">Scan Entry / Exit</h5>
+                                 <div class="d-flex gap-2">
+                                     <button class="btn btn-sm btn-outline-primary rounded-pill" id="startScanBtn" onclick="startScanner()">
+                                         <span class="material-icons-round align-middle" style="font-size:16px;">videocam</span> Start Camera
+                                     </button>
+                                     <button class="btn btn-sm btn-outline-danger rounded-pill" id="stopScanBtn" onclick="stopScanner()" style="display:none;">
+                                         <span class="material-icons-round align-middle" style="font-size:16px;">videocam_off</span> Stop
+                                     </button>
+                                 </div>
+                             </div>
+ 
+                             <!-- Camera view -->
+                             <div id="scannerContainer" style="display:none;">
+                                 <div id="reader"></div>
+                             </div>
+ 
+                             <div id="scanStatus" class="scan-status-bar ready">
+                                 <span class="material-icons-round align-middle" style="font-size:16px;">qr_code_scanner</span>
+                                 Camera not started — click "Start Camera" to begin scanning
+                             </div>
+ 
+                             <!-- Manual QR entry fallback -->
+                             <div class="manual-entry-section">
+                                 <p class="fw-bold small mb-2" style="color:#6366f1;">
+                                     <span class="material-icons-round align-middle" style="font-size:15px;">keyboard</span>
+                                     Manual Entry (paste QR data or plate)
+                                 </p>
+                                 <div class="input-group">
+                                     <textarea id="manualQrInput" class="form-control" rows="3" placeholder='Plate numbers or QR JSONs (one per line) for unlimited batch entry'></textarea>
+                                     <button class="btn btn-outline-primary fw-bold" onclick="processManualEntry()">Log In/Out</button>
+                                 </div>
+                                 <p class="text-muted mt-2 mb-0" style="font-size:0.78rem;">If camera scanning doesn't work, type the plate number or paste QR JSON here.</p>
+                             </div>
+                         </div>
+                     </div>
+                 </div>
+             </div>
+ 
+             <!-- Parking Map -->
+             <div id="parking-map-view" class="view-section">
+                 <div class="d-flex justify-content-between align-items-center mb-4">
+                     <h2 class="fw-bold mb-0">Live Parking Map</h2>
+                     <div class="d-flex gap-2 align-items-center">
+                         <span class="badge bg-success rounded-pill px-3">Available</span>
+                         <span class="badge bg-danger rounded-pill px-3">Occupied</span>
+                     </div>
+                 </div>
+                 <div class="card p-4">
+                     <div class="mb-4">
+                         <label class="form-label fw-bold small">Filter by Category</label>
+                         <select class="form-select w-auto" id="mapTypeFilter" onchange="renderParkingMap()">
+                             <!-- Populated dynamically -->
+                         </select>
+                     </div>
+                     <div id="parkingMapGrid" class="spot-grid"></div>
+                 </div>
+             </div>
+ 
+             <!-- Registry -->
+             <div id="registry-view" class="view-section">
+                 <div class="d-flex justify-content-between align-items-center mb-4">
+                     <h2 class="fw-bold mb-0">Issued Pass Registry</h2>
+                     <button class="btn btn-outline-secondary btn-sm rounded-pill" onclick="printRegistry()">
+                         <span class="material-icons-round align-middle" style="font-size:15px;">print</span> Print Registry Report
+                     </button>
+                 </div>
+                 <div class="card p-4">
+                     <div id="qrRegistryList" class="row g-3"></div>
+                 </div>
+             </div>
+ 
+             <!-- Approvals Section -->
+             <div id="approval-view" class="view-section">
+                 <h2 class="fw-bold mb-4">Registration Approvals</h2>
+                 <div class="card p-4">
+                     <div id="pendingList" class="row g-3"></div>
+                 </div>
+             </div>
+ 
+             <!-- Settings -->
+             <div id="parking-settings" class="view-section">
+                 <h2 class="fw-bold mb-4">Settings</h2>
+                 <div class="mb-4">
+                     <button class="btn btn-outline-primary rounded-pill" onclick="toggleCapacityControls()" id="toggleCapacityBtn">Show capacity settings</button>
+                 </div>
+                 <div id="capacityControls" class="row g-4" style="display:none;">
+                     <div class="col-md-6">
+                         <div class="card p-4">
+                             <h5 class="mb-3 fw-bold">Vehicle Capacity Limits</h5>
+                             <div id="vehicleCapacityForm"></div>
+                         </div>
+                     </div>
+                     <div class="col-md-6">
+                         <div class="card p-4">
+                             <h5 class="mb-3 fw-bold">Helmet Capacity Limits</h5>
+                             <div id="helmetCapacityForm"></div>
+                         </div>
+                     </div>
+                 </div>
+                 <div class="mt-4">
+                     <div class="card p-4">
+                         <h5 class="mb-3 fw-bold">Appearance</h5>
+                         <label class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                             <span class="material-icons-round align-middle" style="font-size:16px;">wallpaper</span> Change Background
+                             <input type="file" id="bgInput" hidden accept="image/*" onchange="changeBackground(event)">
+                         </label>
+                     </div>
+                     <div class="card p-4 mt-4">
+                         <h5 class="mb-3 fw-bold">Data Management</h5>
+                         <button class="btn btn-outline-danger btn-sm rounded-pill px-4 py-2" onclick="resetAllData()">
+                             <span class="material-icons-round align-middle" style="font-size:18px;">refresh</span> Reset Dashboard Data
+                         </button>
+                         <p class="text-muted small mt-2 mb-0">This will clear all current entry/exit logs and reset the dashboard counters. Your pass registry and system configuration will not be affected.</p>
+                     </div>
+                 </div>
+             </div>
+ 
+             <!-- Logs -->
+             <div id="vehicle-logs" class="view-section">
+                 <div class="d-flex justify-content-between align-items-center mb-4">
+                     <h2 class="fw-bold mb-0">Vehicle Logs</h2>
+                     <button class="btn btn-outline-danger btn-sm rounded-pill" onclick="if(confirm('Clear ALL logs?')){vehicles=[];totalEntries=0;updateUI();}">
+                         <span class="material-icons-round align-middle" style="font-size:15px;">delete_sweep</span> Clear All
+                     </button>
+                 </div>
+                 <div class="card p-4">
+                     <div class="table-responsive">
+                         <table class="table align-middle">
+                             <thead>
+                                 <tr>
+                                     <th>Owner</th>
+                                     <th>Plate</th>
+                                     <th>Type</th>
+                                     <th>Spot</th>
+                                     <th>Notes</th>
+                                     <th>Entry</th>
+                                     <th>Exit</th>
+                                     <th></th>
+                                 </tr>
+                             </thead>
+                             <tbody id="logTableBody"></tbody>
+                         </table>
+                     </div>
+                 </div>
+             </div>
+ 
+             <!-- Reports -->
+             <div id="reports-view" class="view-section">
+                 <h2 class="fw-bold mb-4">Reports</h2>
+                 <div class="card p-4">
+                     <div class="row mb-3 g-3">
+                         <div class="col-md-3">
+                             <label class="form-label fw-bold small">Period</label>
+                             <select class="form-select" id="reportPeriod">
+                                 <option value="daily">Daily</option>
+                                 <option value="weekly">Weekly</option>
+                                 <option value="monthly">Monthly</option>
+                                 <option value="yearly">Yearly</option>
+                             </select>
+                         </div>
+                         <div class="col-md-3">
+                             <label class="form-label fw-bold small">Date</label>
+                             <input type="date" class="form-control" id="reportDate">
+                         </div>
+                         <div class="col-md-3 d-flex align-items-end">
+                             <button class="btn btn-primary rounded-pill w-100" onclick="generateReport()">Generate</button>
+                         </div>
+                         <div class="col-md-3 d-flex align-items-end">
+                             <button class="btn btn-outline-secondary rounded-pill w-100" onclick="printReport()">Print</button>
+                         </div>
+                     </div>
+                     <div id="reportContent"></div>
+                 </div>
+             </div>
+         </main>
+     </div>
+ 
+     <script>
+     /* ===================== DATA ===================== */
+     let vehicles     = JSON.parse(localStorage.getItem('vehicleLogs'))   || [];
+     let helmetLogs   = JSON.parse(localStorage.getItem('helmetLogs'))    || [];
+     let qrRegistry   = JSON.parse(localStorage.getItem('qrRegistry'))   || [];
+     let pendingRegs  = JSON.parse(localStorage.getItem('pendingRegistrations')) || [];
+     let totalEntries = parseInt(localStorage.getItem('totalCounter'))    || 0;
+     let trafficChart, typeChart, parkingStatusChart, helmetStatusChart;
+     let html5QrcodeScanner = null;
+     let ownerPhotoBase64  = "";
+     let helmetPhotoBase64 = "";
+     let lastScannedCode = "";
+     let lastScannedTime = 0;
+ 
+     // Audio Feedback for Scanning
+     function playScanSound(type = 'success') {
+         try {
+             const ctx = new (window.AudioContext || window.webkitAudioContext)();
+             const osc = ctx.createOscillator();
+             const gain = ctx.createGain();
+             osc.connect(gain); gain.connect(ctx.destination);
+             osc.frequency.value = type === 'success' ? 880 : 220;
+             gain.gain.value = 0.05;
+             osc.start(); setTimeout(() => osc.stop(), 150);
+         } catch(e) { console.warn("Audio feedback failed:", e); }
+     }
+ 
+     // Pending entry — holds scan data while awaiting spot selection
+     let pendingEntry = null;
+     let currentSpotMode = 'grid';
+     let selectedSpot = null;
+ 
+     const TYPES = ['Cars', 'Motorcycle', 'Private', 'Deliveries'];
+ 
+     const defaultParking = {
+         Cars: { capacity: 20 }, Motorcycle: { capacity: 30 }, Private: { capacity: 15 }, Deliveries: { capacity: 10 }
+     };
+     let parkingConfig = JSON.parse(localStorage.getItem('parkingConfig')) || defaultParking;
+     // Ensure all institutional types exist in current config
+     Object.keys(defaultParking).forEach(k => { if(!parkingConfig[k]) parkingConfig[k] = {...defaultParking[k]}; });
+ 
+     const defaultHelmet = {
+         Cars: { capacity: 5 }, Motorcycle: { capacity: 30 }, Private: { capacity: 5 }, Deliveries: { capacity: 5 }
+     };
+     let helmetConfig = JSON.parse(localStorage.getItem('helmetConfig')) || defaultHelmet;
+     Object.keys(defaultHelmet).forEach(k => { if(!helmetConfig[k]) helmetConfig[k] = {...defaultHelmet[k]}; });
+ 
+     /* ===================== HELPERS ===================== */
+     function saveParkingConfig(){ localStorage.setItem('parkingConfig', JSON.stringify(parkingConfig)); }
+     function saveHelmetConfig(){  localStorage.setItem('helmetConfig',  JSON.stringify(helmetConfig));  }
+ 
+     function getActiveCount(type){
+         return vehicles.filter(v => v.type === type && v.logOutTime === "---").length;
+     }
+     function getHelmetActiveCount(type){
+         return helmetLogs.filter(h => h.type === type && h.logOutTime === "---").length;
+     }
+ 
+     /** Returns array of all spot labels for a type */
+     function getAllSpots(type){
+         const cap = parkingConfig[type]?.capacity || 10;
+         const prefix = type.replace(/ /g,'').charAt(0).toUpperCase();
+         return Array.from({length: cap}, (_,i) => `${prefix}-${i+1}`);
+     }
+ 
+     /** Returns set of currently occupied spots */
+     function getOccupiedSpots(type){
+         return new Set(vehicles
+             .filter(v => v.type === type && v.logOutTime === "---" && v.spot)
+             .map(v => v.spot));
+     }
+ 
+     /** Finds the first available spot for a type */
+     function getAutoSpot(type){
+         const all = getAllSpots(type);
+         const occupied = getOccupiedSpots(type);
+         let spot = all.find(s => !occupied.has(s));
+         if(!spot) {
+             const prefix = type.replace(/ /g,'').charAt(0).toUpperCase();
+             spot = `${prefix}-OVF-${getActiveCount(type) + 1}`;
+         }
+         return spot;
+     }
+ 
+     function normalizePlate(value){
+         return String(value || '').trim().toUpperCase();
+     }
+ 
+     function ensureAuthorizedPass(data){
+         if(!data || (typeof data !== 'object' && typeof data !== 'string')) return null;
+ 
+         let payload = data;
+         if(typeof payload === 'string'){
+             const trimmed = payload.trim();
+             if(!trimmed) return null;
+             try { payload = JSON.parse(trimmed); } catch(e) { payload = { plate: trimmed.toUpperCase(), name: 'Visitor', type: 'Private' }; }
+         }
+ 
+         const plate = normalizePlate(payload.plate || payload.plateNumber || payload.licensePlate);
+         const id = payload.id ? String(payload.id) : '';
+         let reg = null;
+ 
+         if(id){
+             reg = qrRegistry.find(q => String(q.id) === id);
+         }
+         if(!reg && plate){
+             reg = qrRegistry.find(q => normalizePlate(q.plate) === plate);
+         }
+ 
+         if(reg){
+             return reg;
+         }
+ 
+         if(!plate){
+             return null;
+         }
+ 
+         const createdPass = {
+             id: payload.id || Date.now() + Math.floor(Math.random() * 10000),
+             name: payload.name || 'Visitor',
+             plate,
+             type: payload.type || 'Private',
+             phone: payload.phone || '',
+             messenger: payload.messenger || '',
+             helmet: payload.helmet || '',
+             regTime: new Date().toLocaleString(),
+             photo: payload.photo || '',
+             helmetPhoto: payload.helmetPhoto || '',
+             carPhotos: payload.carPhotos || [],
+             isTemporary: true
+         };
+         qrRegistry.push(createdPass);
+         localStorage.setItem('qrRegistry', JSON.stringify(qrRegistry));
+         return createdPass;
+     }
+ 
+     /* ===================== SPOT MODAL ===================== */
+     function openSpotModal(data){
+         pendingEntry = data;
+         selectedSpot = null;
+ 
+         document.getElementById('spotModalVehicle').innerText = `${data.name} — ${data.plate}`;
+         document.getElementById('spotModalSubtitle').innerText = `Type: ${data.type}`;
+         document.getElementById('spotTypeLabel').innerText = data.type;
+         document.getElementById('customSpotInput').value = '';
+ 
+         renderSpotGrid(data.type);
+         setSpotMode('grid');
+         document.getElementById('spotModal').classList.add('show');
+     }
+ 
+     function renderSpotGrid(type){
+         const allSpots    = getAllSpots(type);
+         const occupied    = getOccupiedSpots(type);
+         const grid        = document.getElementById('spotGrid');
+         grid.innerHTML    = '';
+         allSpots.forEach(spot => {
+             const btn = document.createElement('button');
+             btn.className = 'spot-btn' + (occupied.has(spot) ? ' occupied' : '');
+             btn.innerText = spot;
+             btn.disabled  = occupied.has(spot);
+             btn.onclick   = () => selectSpot(spot, btn);
+             grid.appendChild(btn);
+         });
+     }
+ 
+     function selectSpot(spot, btn){
+         document.querySelectorAll('.spot-btn').forEach(b => b.classList.remove('selected'));
+         btn.classList.add('selected');
+         selectedSpot = spot;
+     }
+ 
+     function setSpotMode(mode){
+         currentSpotMode = mode;
+         document.getElementById('spotGridSection').style.display   = mode === 'grid'   ? 'block' : 'none';
+         document.getElementById('spotCustomSection').style.display = mode === 'custom' ? 'block' : 'none';
+         document.getElementById('gridModeBtn').className   = 'btn btn-sm rounded-pill ' + (mode==='grid'   ? 'btn-primary'   : 'btn-outline-primary');
+         document.getElementById('customModeBtn').className = 'btn btn-sm rounded-pill ' + (mode==='custom' ? 'btn-secondary' : 'btn-outline-secondary');
+         selectedSpot = null;
+     }
+ 
+     function confirmSpotAssignment(){
+         const modal = document.getElementById('spotModal');
+         const isReassign = modal.dataset.mode === 'reassign';
+         
+         let spot = null;
+         if(currentSpotMode === 'grid'){
+             spot = selectedSpot;
+             if(!spot){ alert('Please select a spot from the grid, or switch to "Enter custom".'); return; }
+         } else {
+             spot = document.getElementById('customSpotInput').value.trim().toUpperCase();
+             if(!spot){ alert('Please enter a spot label.'); return; }
+         }
+ 
+         if(isReassign){
+             const idx = parseInt(modal.dataset.index);
+             const type = vehicles[idx].type;
+             const occupied = getOccupiedSpots(type);
+             
+             if(occupied.has(spot)){ alert(`Spot ${spot} is already occupied. Choose another.`); return; }
+             
+             vehicles[idx].spot = spot;
+             updateUI();
+             modal.classList.remove('show');
+             modal.dataset.mode = '';
+             modal.dataset.index = '';
+         } else {
+             const occupied = getOccupiedSpots(pendingEntry.type);
+             if(occupied.has(spot)){ alert(`Spot ${spot} is already occupied. Choose another.`); return; }
+ 
+             finishEntry(pendingEntry, spot);
+             modal.classList.remove('show');
+             if(html5QrcodeScanner) html5QrcodeScanner.resume();
+         }
+         pendingEntry = null;
+     }
+ 
+     function cancelSpotAssignment(){
+         document.getElementById('spotModal').classList.remove('show');
+         pendingEntry = null;
+         setScanStatus('Spot assignment cancelled. Scan again to retry.', 'ready');
+         if(html5QrcodeScanner) html5QrcodeScanner.resume();
+     }
+ 
+     function finishEntry(data, assignedSpot){
+         const now  = new Date();
+         const time = now.toLocaleString([], { dateStyle:'short', timeStyle:'short' });
+         vehicles.push({...data, logInTime: time, logOutTime: "---", spot: assignedSpot, notes: "", timestamp: now.getTime()});
+         totalEntries++;
+         showPopup('verified_user', '#22c55e', `Welcome! Spot: ${assignedSpot}`, `${data.name} — ${data.plate}`);
+         setScanStatus(`✓ Logged in: ${data.name} → Spot ${assignedSpot}`, 'success');
+         updateUI();
+     }
+ 
+     /* ===================== SCAN POPUP ===================== */
+     function showPopup(icon, color, text, sub){
+         const popup = document.getElementById('scan-popup');
+         const panda = document.getElementById('panda-avatar');
+         popup.querySelector('.popup-icon').innerText   = icon;
+         popup.querySelector('.popup-icon').style.color = color;
+         document.getElementById('popup-text').innerText    = text;
+         document.getElementById('popup-subtext').innerText = sub || '';
+         popup.classList.add('show');
+ 
+         // Talking Panda Voice Logic
+         if ('speechSynthesis' in window) {
+             window.speechSynthesis.cancel(); // Interrupt current speech
+             
+             const name = sub ? sub.split(' — ')[0] : 'Owner';
+             let message = text;
+             if (text.toLowerCase().includes('welcome')) message = `Welcome, ${name}!`;
+             else if (text.toLowerCase().includes('goodbye')) message = `Goodbye, ${name}!`;
+             
+             const utterance = new SpeechSynthesisUtterance(message);
+             utterance.pitch = 1.4; // High pitch for panda
+             utterance.rate = 1.0;
+             utterance.onstart = () => panda.classList.add('panda-speaking');
+             utterance.onend = () => panda.classList.remove('panda-speaking');
+             window.speechSynthesis.speak(utterance);
+         }
+ 
+         setTimeout(() => popup.classList.remove('show'), 2500);
+     }
+ 
+     function setScanStatus(msg, type='ready'){
+         const el = document.getElementById('scanStatus');
+         el.className = `scan-status-bar ${type}`;
+         el.innerText = msg;
+     }
+ 
+     /* ===================== SCANNER ===================== */
+     function startScanner(){
+         if (html5QrcodeScanner && html5QrcodeScanner.getState() === 2) return;
+         document.getElementById('scannerContainer').style.display = 'block';
+         document.getElementById('startScanBtn').style.display    = 'none';
+         document.getElementById('stopScanBtn').style.display     = 'inline-flex';
+ 
+         setScanStatus('Starting camera...', 'ready');
+ 
+         if (!html5QrcodeScanner) {
+         html5QrcodeScanner = new Html5Qrcode("reader");
+         }
+ 
+         Html5Qrcode.getCameras().then(cameras => {
+             const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+             const cameraConfig = { facingMode: "environment" }; // Prefer back camera
+             
+             html5QrcodeScanner.start(cameraConfig, config, onScanSuccess)
+                 .then(() => setScanStatus('📷 Camera active — point at a QR code', 'ready'))
+                 .catch(err => {
+                     if (!err.toString().includes("NotFoundException") && !err.toString().includes("Already scanning")) {
+                         setScanStatus('Camera Error: ' + err, 'error');
+                         stopScanner();
+                     }
+                 });
+         }).catch(err => {
+             setScanStatus('Permission Error: ' + err, 'error');
+             stopScanner();
+         });
+     }
+ 
+     function stopScanner(){
+         if (html5QrcodeScanner && html5QrcodeScanner.getState() === 2) {
+             html5QrcodeScanner.stop()
+                 .then(() => {
+                     document.getElementById('reader').innerHTML = '';
+                     document.getElementById('scannerContainer').style.display = 'none';
+                     document.getElementById('startScanBtn').style.display     = 'inline-flex';
+                     document.getElementById('stopScanBtn').style.display      = 'none';
+                     setScanStatus('Camera stopped. Click "Start Camera" to resume.', 'ready');
+                 })
+                 .catch(err => console.warn("Scanner stop failed:", err));
+         } else {
+             document.getElementById('scannerContainer').style.display = 'none';
+             document.getElementById('startScanBtn').style.display     = 'inline-flex';
+             document.getElementById('stopScanBtn').style.display      = 'none';
+         }
+     }
+ 
+     function processManualEntry(){
+         const raw = document.getElementById('manualQrInput').value.trim();
+         if(!raw){ alert('Enter plate numbers or paste QR data.'); return; }
+ 
+         const lines = raw.split('\n').filter(l => l.trim() !== "");
+         const isBatch = lines.length > 1;
+         
+         lines.forEach(line => {
+             let data = null;
+             try { data = JSON.parse(line.trim()); } catch(e){ data = null; }
+ 
+             if(!data || typeof data !== 'object'){
+                 data = {
+                     id: Date.now() + Math.floor(Math.random() * 10000),
+                     plate: line.trim().toUpperCase(),
+                     name: 'Manual Entry',
+                     type: 'Private'
+                 };
+             }
+             lastScannedCode = ""; // Reset debounce to ensure manual batches are always valid
+             onScanSuccess(JSON.stringify(data), isBatch);
+         });
+         document.getElementById('manualQrInput').value = '';
+         if(isBatch) alert(`Processed ${lines.length} items successfully.`);
+     }
+ 
+     function onScanSuccess(decodedText, forceAuto = false){
+         // Debounce: allow rapid re-scanning by reducing wait to 1 second
+         const nowTs = Date.now();
+         if (decodedText === lastScannedCode && (nowTs - lastScannedTime < 1000)) {
+             return;
+         }
+         lastScannedCode = decodedText;
+         lastScannedTime = nowTs;
+ 
+         let data = null;
+         try {
+             data = JSON.parse(decodedText);
+         } catch(e) {
+             data = null;
+         }
+ 
+         if (!data || typeof data !== 'object') {
+             const plate = decodedText.trim().toUpperCase();
+             data = { id: Date.now() + Math.floor(Math.random() * 1000), plate, name: 'Visitor', type: 'Private' };
+         }
+ 
+         if (data.type !== 'helmet') {
+             data = ensureAuthorizedPass(data);
+         }
+ 
+         if (!data || (!data.plate && data.type !== 'helmet')) {
+             playScanSound('error');
+             setScanStatus('Unrecognized QR format or plate.', 'error');
+             return;
+         }
+ 
+         const time = new Date().toLocaleString([], { dateStyle:'short', timeStyle:'short' });
+ 
+         if(data.type === 'helmet'){
+             playScanSound('success');
+             handleHelmetScan(data, time);
+             return;
+         }
+ 
+         // Vehicle Scan: Must have a plate
+         if (!data.plate || data.plate === "") {
+             playScanSound('error');
+             setScanStatus('Invalid QR: Missing Plate Number.', 'error');
+             return;
+         }
+ 
+         const idx = vehicles.findIndex(v => v.logOutTime === "---" && (
+             (data.id && v.id === data.id) || 
+             (data.plate && v.plate && v.plate.toUpperCase() === data.plate.toUpperCase())
+         ));
+         
+         if(idx !== -1){
+             // Vehicle is exiting
+             playScanSound('success');
+             vehicles[idx].logOutTime = time;
+             showPopup('check_circle', '#f59e0b', 'Goodbye!', `${vehicles[idx].name} — ${vehicles[idx].plate}`);
+             setScanStatus(`✓ Logged out: ${vehicles[idx].name}`, 'success');
+             updateUI();
+             return;
+         }
+ 
+         // Vehicle is entering: Auto-assign spot for rapid/unlimited scanning
+         playScanSound('success');
+         
+         if(forceAuto) {
+             finishEntry(data, getAutoSpot(data.type));
+         } else {
+             if(html5QrcodeScanner) html5QrcodeScanner.pause();
+             openSpotModal(data);
+         }
+     }
+ 
+     function handleHelmetScan(data, time){
+         const idx = helmetLogs.findIndex(h => h.id === data.id && h.logOutTime === "---");
+         if(idx !== -1){
+             helmetLogs[idx].logOutTime = time;
+             showPopup('check_circle', '#f59e0b', 'Helmet Returned!', '');
+             setScanStatus('✓ Helmet returned.', 'success');
+         } else {
+            // Always authorize helmet scans even if not in registry
+             const regItem = qrRegistry.find(q => q.id === data.id);
+            const type        = regItem ? regItem.type : (data.type === 'helmet' ? 'Motorcycle' : 'Private');
+            const helmetInfo  = data.helmet || (regItem ? regItem.helmet : "Guest Helmet");
+            
+             const activeCount = getHelmetActiveCount(type) || 0;
+             const maxCap      = helmetConfig[type]?.capacity || 0;
+             if(activeCount >= maxCap){
+                 setScanStatus(`Helmet storage full for ${type} (Logged as overflow).`, 'success');
+             }
+            helmetLogs.push({id: data.id || Date.now(), helmet: helmetInfo, type, logInTime: time, logOutTime: "---", timestamp: new Date().getTime()});
+             showPopup('verified_user', '#22c55e', 'Helmet Stored!', '');
+             setScanStatus('✓ Helmet stored.', 'success');
+         }
+         updateUI();
+     }
+ 
+     /* ===================== CAPACITY FORMS (dynamic) ===================== */
+     function buildCapacityForms(){
+         const vDiv = document.getElementById('vehicleCapacityForm');
+         const hDiv = document.getElementById('helmetCapacityForm');
+         vDiv.innerHTML = ''; hDiv.innerHTML = '';
+ 
+         const renderV = (list, title) => {
+             let h = `<h6 class="text-primary fw-bold mt-2 mb-3 border-bottom pb-1" style="font-size:0.8rem;">${title}</h6>`;
+             list.forEach(t => {
+                 const k = t.replace(/ /g,'');
+                 h += `<div class="mb-3">
+                     <label class="form-label small fw-bold">${t}</label>
+                     <div class="input-group">
+                         <input type="number" id="cap_${k}" class="form-control" min="1" value="${parkingConfig[t].capacity}">
+                         <button class="btn btn-outline-primary" onclick="updateCapacity('${t}')">Set</button>
+                     </div>
+                     <div id="capDisplay_${k}" class="mt-1 small text-muted"></div>
+                 </div>`;
+             }); return h;
+         };
+         vDiv.innerHTML = renderV(TYPES, 'PARKING LIMITS');
+ 
+         const renderH = (list, title) => {
+             let h = `<h6 class="text-info fw-bold mt-2 mb-3 border-bottom pb-1" style="font-size:0.8rem;">${title}</h6>`;
+             list.forEach(t => {
+                 const k = t.replace(/ /g,'');
+                 h += `<div class="mb-3">
+                     <label class="form-label small fw-bold">${t}</label>
+                     <div class="input-group">
+                         <input type="number" id="hcap_${k}" class="form-control" min="1" value="${helmetConfig[t].capacity}">
+                         <button class="btn btn-outline-primary" onclick="updateHelmetCapacity('${t}')">Set</button>
+                     </div>
+                     <div id="hcapDisplay_${k}" class="mt-1 small text-muted"></div>
+                 </div>`;
+             }); return h;
+         };
+         hDiv.innerHTML = renderH(TYPES, 'HELMET STORAGE');
+     }
+ 
+     function updateCapacity(type){
+         const key = type.replace(/ /g,'');
+         const val = parseInt(document.getElementById('cap_'+key)?.value, 10);
+         if(!val || val<1){ alert('Enter a valid number.'); return; }
+         parkingConfig[type].capacity = val;
+         saveParkingConfig();
+         updateParkingStatus();
+         updateUI();
+         alert(`${type} vehicle capacity set to ${val}`);
+     }
+ 
+     function updateHelmetCapacity(type){
+         const key = type.replace(/ /g,'');
+         const val = parseInt(document.getElementById('hcap_'+key)?.value, 10);
+         if(!val || val<1){ alert('Enter a valid number.'); return; }
+         helmetConfig[type].capacity = val;
+         saveHelmetConfig();
+         updateParkingStatus();
+         updateUI();
+         alert(`${type} helmet capacity set to ${val}`);
+     }
+ 
+     function updateParkingStatus(){
+         TYPES.forEach(type => {
+             const key = type.replace(/ /g,'');
+             const cD = document.getElementById('capDisplay_'+key);
+             if(cD) cD.innerText = `${getActiveCount(type)} of ${parkingConfig[type].capacity} currently occupied`;
+             const hD = document.getElementById('hcapDisplay_'+key);
+             if(hD) hD.innerText = `${getHelmetActiveCount(type)} of ${helmetConfig[type].capacity} currently stored`;
+         });
+         updateMonitorCharts();
+     }
+ 
+     function toggleCapacityControls(){
+         const controls = document.getElementById('capacityControls');
+         const btn      = document.getElementById('toggleCapacityBtn');
+         const isHidden = controls.style.display === 'none' || controls.style.display === '';
+         controls.style.display = isHidden ? 'flex' : 'none';
+         btn.innerText = isHidden ? 'Hide capacity settings' : 'Show capacity settings';
+     }
+ 
+     function renderParkingMap() {
+         const type = document.getElementById('mapTypeFilter').value;
+         const grid = document.getElementById('parkingMapGrid');
+         if (!type || !grid) return;
+ 
+         const allSpots = getAllSpots(type);
+         const activeVehicles = vehicles.filter(v => v.type === type && v.logOutTime === "---" && v.spot);
+         const occupied = new Set(activeVehicles.map(v => v.spot));
+         grid.innerHTML = '';
+ 
+         allSpots.forEach(spot => {
+             const div = document.createElement('div');
+             const occupant = activeVehicles.find(v => v.spot === spot);
+             const isOccupied = !!occupant;
+ 
+             div.className = 'spot-btn ' + (isOccupied ? 'occupied' : 'available');
+             div.style.cursor = 'default';
+             div.innerText = spot;
+             div.style.height = '60px';
+             div.style.display = 'flex';
+             div.style.alignItems = 'center';
+             div.style.justifyContent = 'center';
+             div.innerText = spot;
+ 
+             if (isOccupied) {
+                 div.style.cursor = 'pointer';
+                 div.title = `Occupied by: ${occupant.name}`;
+                 div.onclick = () => {
+                     // Look for registry data using ID or Plate
+                     const regItem = qrRegistry.find(q => q.id === occupant.id || (occupant.plate && q.plate.toUpperCase() === occupant.plate.toUpperCase()));
+                     if (regItem) {
+                         viewQrDetails(regItem.id);
+                     } else {
+                         alert(`Occupant Info (Unregistered):\nName: ${occupant.name}\nPlate: ${occupant.plate}\nEntry: ${occupant.logInTime}`);
+                     }
+                 };
+             } else {
+                 div.style.cursor = 'default';
+             }
+ 
+             grid.appendChild(div);
+         });
+     }
+ 
+     /* ===================== AUTH ===================== */
+     window.onload = () => {
+         const savedBg = localStorage.getItem('customBg');
+         if(savedBg){ const bg = document.getElementById('bg-canvas'); bg.style.backgroundImage=`url(${savedBg})`; bg.style.backgroundSize="cover"; }
+ 
+         const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+         if(isLoggedIn){
+             document.getElementById('auth-container').style.display = 'none';
+             document.getElementById('app-interface').style.display  = 'block';
+             buildCapacityForms();
+             
+             const mapFilter = document.getElementById('mapTypeFilter');
+             if(mapFilter) mapFilter.innerHTML = TYPES.map(t => `<option value="${t}">${t}</option>`).join('');
+             initCharts();
+             updateUI();
+             updateParkingStatus();
+            setInterval(updateUI, 3000); // Poll for new registrations every 3 seconds
+             setTimeout(()=>{
+                 const mc = document.querySelector('.main-content');
+                 const sb = document.querySelector('.sidebar');
+                 mc.classList.add('maximized');
+                 sb.classList.add('minimized');
+                 document.getElementById('maximizeBtn').querySelector('.material-icons-round').textContent = 'fullscreen_exit';
+             }, 80);
+         }
+         document.getElementById('reportDate').value = new Date().toISOString().split('T')[0];
+     };
+ 
+     function handleLogin(){
+         const email  = document.getElementById('logEmail').value.trim();
+         const pass   = document.getElementById('logPass').value.trim();
+         const stored = JSON.parse(localStorage.getItem('adminUser'));
+         if(!stored){ alert('No account found. Please register.'); toggleAuth(false); return; }
+         if(!email || !pass){ alert('Enter email and password.'); return; }
+         if(email === stored.email && pass === stored.pass){
+             localStorage.setItem('isLoggedIn','true');
+             document.getElementById('auth-container').style.display = 'none';
+             document.getElementById('app-interface').style.display  = 'block';
+             const mapFilter = document.getElementById('mapTypeFilter');
+             if(mapFilter) mapFilter.innerHTML = TYPES.map(t => `<option value="${t}">${t}</option>`).join('');
+             buildCapacityForms(); initCharts(); updateUI(); updateParkingStatus();
+         } else { alert('Invalid credentials.'); }
+     }
+ 
+     function toggleAuth(showLogin){
+         document.getElementById('login-form').style.display  = showLogin ? 'block' : 'none';
+         document.getElementById('signup-form').style.display = showLogin ? 'none'  : 'block';
+     }
+ 
+     function handleSignup(){
+         const name  = document.getElementById('regName').value.trim();
+         const email = document.getElementById('regEmail').value.trim();
+         const pass  = document.getElementById('regPass').value.trim();
+         if(!name||!email||!pass){ alert('Fill all fields.'); return; }
+         localStorage.setItem('adminUser', JSON.stringify({name,email,pass}));
+         localStorage.setItem('isLoggedIn','true');
+         document.getElementById('auth-container').style.display = 'none';
+         document.getElementById('app-interface').style.display  = 'block';
+         buildCapacityForms(); initCharts(); updateUI(); updateParkingStatus();
+         alert('Account created. You are now logged in.');
+     }
+ 
+     function handleLogout(){ localStorage.removeItem('isLoggedIn'); location.reload(); }
+ 
+     function resetAllData() {
+         if(confirm('This will clear all active logs and entry counters. Registry and settings will be preserved. Proceed?')) {
+             vehicles = [];
+             totalEntries = 0;
+             updateUI();
+         }
+     }
+ 
+     /* ===================== NAVIGATION ===================== */
+     function showSection(id){
+         document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
+         document.querySelectorAll('.nav-link').forEach(l => {
+             l.classList.remove('active');
+             if(l.getAttribute('onclick')?.includes(id)) l.classList.add('active');
+         });
+         document.getElementById(id).classList.add('active');
+         if(id !== 'qr-scanner-view') stopScanner();
+         if(id === 'parking-map-view') renderParkingMap();
+     }
+ 
+     function toggleMaximize(){
+         const mc   = document.querySelector('.main-content');
+         const sb   = document.querySelector('.sidebar');
+         const icon = document.getElementById('maximizeBtn').querySelector('.material-icons-round');
+         const isMax = mc.classList.contains('maximized');
+         mc.classList.toggle('maximized', !isMax);
+         sb.classList.toggle('minimized', !isMax);
+         icon.textContent = isMax ? 'fullscreen' : 'fullscreen_exit';
+     }
+ 
+     /* ===================== QR GENERATION ===================== */
+     document.getElementById('ownerPhotoInput').addEventListener('change', function(e){
+         const file = e.target.files[0];
+         if(!file) return;
+ 
+         const reader = new FileReader();
+         reader.onload = () => {
+             compressImage(reader.result, 300, 0.7, (compressed) => {
+                 ownerPhotoBase64 = compressed;
+                 document.getElementById('photoPreview').innerHTML = `<img src="${compressed}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;"> Owner ready`;
+             });
+         };
+         reader.readAsDataURL(file);
+     });
+ 
+     document.getElementById('helmetPhotoInput').addEventListener('change', function(e){
+         const file = e.target.files[0];
+         if(!file) return;
+ 
+         const reader = new FileReader();
+         reader.onload = () => {
+             compressImage(reader.result, 300, 0.7, (compressed) => {
+                 helmetPhotoBase64 = compressed;
+                 document.getElementById('helmetPhotoPreview').innerHTML = `<img src="${compressed}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;"> Helmet ready`;
+             });
+         };
+         reader.readAsDataURL(file);
+     });
+ 
+     function compressImage(base64, maxDim, quality, callback) {
+         const img = new Image();
+         img.onload = () => {
+             const canvas = document.createElement('canvas');
+             let w = img.width, h = img.height;
+             if (w > h) { if (w > maxDim) { h *= maxDim / w; w = maxDim; } }
+             else { if (h > maxDim) { w *= maxDim / h; h = maxDim; } }
+             canvas.width = w; canvas.height = h;
+             canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+             callback(canvas.toDataURL('image/jpeg', quality));
+         };
+         img.src = base64;
+     }
+ 
+     function generateCertifiedQR(){
+         const plate = document.getElementById('qrPlate').value.trim().toUpperCase();
+         const name = document.getElementById('qrName').value.trim();
+ 
+         const data = {
+             name:      name,
+             plate:     plate,
+             phone:     document.getElementById('qrPhone').value.trim(),
+             messenger: document.getElementById('qrMessenger').value.trim(),
+             helmet:    document.getElementById('qrHelmet').value.trim(),
+             type:      document.getElementById('qrType').value,
+             photo:     ownerPhotoBase64,
+             helmetPhoto: helmetPhotoBase64,
+             id: Date.now() + Math.floor(Math.random() * 1000),
+             regTime: new Date().toLocaleString()
+         };
+ 
+         if(!data.plate){ 
+             alert('Plate Number is required.'); 
+             return; 
+         }
+ 
+         qrRegistry.push(data);
+         localStorage.setItem('qrRegistry', JSON.stringify(qrRegistry));
+ 
+         document.getElementById('qrcode-display').innerHTML = '';
+         new QRCode(document.getElementById('qrcode-display'), {
+             text: JSON.stringify({id:data.id, plate:plate, name:name || 'Visitor', type:data.type}),
+             width:140, height:140
+         });
+ 
+         const helmetQrCont = document.getElementById('helmet-qrcode-display');
+         helmetQrCont.innerHTML = '';
+         if(helmetPhotoBase64 || data.helmet){
+             new QRCode(helmetQrCont, {
+                 text: JSON.stringify({id:data.id, helmet:data.helmet, type:'helmet'}),
+                 width:140, height:140
+             });
+         } else {
+             helmetQrCont.innerHTML = '<div class="text-center text-muted small p-2">Upload helmet photo<br>to generate</div>';
+         }
+ 
+         document.getElementById('qrLabel').innerText = (name || 'Visitor') + ' — ' + plate;
+         document.getElementById('qrOutputContainer').classList.remove('d-none');
+ 
+         // Clear inputs immediately for "unlimited" generation
+         ['qrName','qrPlate','qrPhone','qrMessenger','qrHelmet'].forEach(id => {
+             document.getElementById(id).value = '';
+         });
+         ownerPhotoBase64 = "";
+         helmetPhotoBase64 = "";
+         document.getElementById('photoPreview').innerText = 'No owner photo';
+         document.getElementById('helmetPhotoPreview').innerText = 'No helmet photo';
+ 
+         updateUI();
+     }
+ 
+     function printRegistry() {
+         if(!qrRegistry.length) return alert("Registry is empty.");
+         const printWindow = window.open('', '_blank');
+         let rows = qrRegistry.map(q => `
+             <tr>
+                 <td>${q.name}</td>
+                 <td>${q.plate}</td>
+                 <td>${q.type}</td>
+                 <td>${q.phone || 'N/A'}</td>
+                 <td style="font-size: 0.8rem;">${q.regTime || 'N/A'}</td>
+             </tr>
+         `).join('');
+ 
+         printWindow.document.write(`
+             <html>
+                 <head>
+                     <title>V-Security Pro | Registry Logs</title>
+                     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+                     <style>
+                         body { padding: 40px; font-family: 'DM Sans', sans-serif; }
+                         .header { border-bottom: 2px solid #3730a3; margin-bottom: 30px; padding-bottom: 10px; }
+                     </style>
+                 </head>
+                 <body>
+                     <div class="header">
+                         <h2 class="fw-bold text-primary">V-Security Pro</h2>
+                         <p class="text-muted">Master Registry Log of All Issued Passes</p>
+                     </div>
+                     <table class="table table-bordered table-striped">
+                         <thead class="table-dark"><tr><th>Owner Name</th><th>Plate</th><th>Type</th><th>Contact</th><th>Registration Date</th></tr></thead>
+                         <tbody>${rows}</tbody>
+                     </table>
+                 </body>
+             </html>
+         `);
+         printWindow.document.close();
+         printWindow.print();
+     }
+ 
+     function printUserLog(plate) {
+         const history = vehicles.filter(v => v.plate.toUpperCase() === plate.toUpperCase());
+         if(!history.length) return alert("No entry/exit history found for this vehicle.");
+         
+         const printWindow = window.open('', '_blank');
+         let rows = history.map(h => `<tr><td>${h.logInTime}</td><td>${h.logOutTime}</td><td>${h.spot || 'N/A'}</td><td>${h.notes || ''}</td></tr>`).join('');
+ 
+         printWindow.document.write(`
+             <html>
+                 <head>
+                     <title>Activity Log - ${plate}</title>
+                     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+                     <style>body { padding: 40px; font-family: 'DM Sans', sans-serif; }.header { border-bottom: 2px solid #3730a3; margin-bottom: 20px; }</style>
+                 </head>
+                 <body>
+                     <div class="header"><h2>Activity Log: ${plate}</h2></div>
+                     <table class="table table-bordered">
+                         <thead class="table-light"><tr><th>Entry Time</th><th>Exit Time</th><th>Spot</th><th>Notes</th></tr></thead>
+                         <tbody>${rows}</tbody>
+                     </table>
+                 </body>
+             </html>
+         `);
+         printWindow.document.close();
+         printWindow.print();
+     }
+ 
+     function resetGenForm(){
+         ownerPhotoBase64  = "";
+         helmetPhotoBase64 = "";
+         document.getElementById('photoPreview').innerText       = 'No owner photo';
+         document.getElementById('helmetPhotoPreview').innerText = 'No helmet photo';
+         ['qrName','qrPlate','qrPhone','qrMessenger','qrHelmet'].forEach(id => document.getElementById(id).value = '');
+         document.getElementById('qrOutputContainer').classList.add('d-none');
+     }
+ 
+     function viewQrDetails(id){
+         const item = qrRegistry.find(q => q.id === id);
+         if(!item) return;
+         document.getElementById('modalName').innerText   = item.name;
+         document.getElementById('modalType').innerText   = item.type;
+         document.getElementById('modalPlate').innerText  = item.plate;
+         document.getElementById('modalPhone').innerText  = item.phone  || 'N/A';
+         document.getElementById('modalHelmet').innerText = item.helmet || 'N/A';
+         document.getElementById('modalPhoto').src        = item.photo       || 'https://via.placeholder.com/150?text=No+Photo';
+         document.getElementById('modalHelmetPhoto').src  = item.helmetPhoto || 'https://via.placeholder.com/150?text=No+Helmet';
+         const carGallery = document.getElementById('modalCarPhotos');
+         if(carGallery){
+             carGallery.innerHTML = item.carPhotos && item.carPhotos.length ? item.carPhotos.slice(0,5).map(photo => `<img src="${photo}" style="width:80px;height:80px;object-fit:cover;border-radius:14px;border:1px solid #e2e8f0;margin:4px;">`).join('') : '<div class="small text-muted">No car photos attached.</div>';
+         }
+ 
+         const qT = document.getElementById('modalQrDisplay');
+         qT.innerHTML = '';
+         new QRCode(qT, { text: JSON.stringify({id:item.id, plate:item.plate, name:item.name, type:item.type}), width:100, height:100 });
+ 
+         const hT = document.getElementById('modalHelmetQrDisplay');
+         hT.innerHTML = '';
+         if(item.helmetPhoto && item.name){
+             new QRCode(hT, { text: JSON.stringify({id:item.id, helmet:item.helmet, type:'helmet'}), width:100, height:100 });
+         } else {
+             hT.innerHTML = '<div class="text-center text-muted small p-2">No helmet QR</div>';
+         }
+ 
+         document.getElementById('printUserLogBtn').onclick = () => printUserLog(item.plate);
+         document.getElementById('deleteRegistryBtn').onclick = () => deleteFromRegistry(id);
+         document.getElementById('qrDetailsModal').style.display = 'flex';
+     }
+ 
+     function closeModal(){ document.getElementById('qrDetailsModal').style.display = 'none'; }
+ 
+     function deleteFromRegistry(id){
+         if(confirm('Permanently delete this pass?')){
+             qrRegistry = qrRegistry.filter(q => q.id !== id);
+             localStorage.setItem('qrRegistry', JSON.stringify(qrRegistry));
+             closeModal(); updateUI();
+         }
+     }
+ 
+     function printPass(){
+         const qrContainer = document.getElementById('qrOutputContainer');
+         const label = document.getElementById('qrLabel').innerText;
+         const printWindow = window.open('','_blank');
+         
+         printWindow.document.write(`
+             <html>
+                 <head>
+                     <title>V-Security Pass - ${label}</title>
+                     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+                     <style>
+                         body { font-family: 'DM Sans', sans-serif; padding: 40px; background: white; }
+                         .pass-card { 
+                             border: 2px dashed #2563eb; border-radius: 24px; padding: 30px; 
+                             max-width: 450px; margin: 0 auto; text-align: center;
+                         }
+                         .qr-section img { display: block; margin: 10px auto; }
+                         .btn-print { margin-top: 20px; }
+                         @media print { .btn-print { display: none !important; } }
+                     </style>
+                 </head>
+                 <body>
+                     <div class="pass-card">
+                         <h2 class="fw-bold mb-0" style="color:#1e3a8a;">V-Security Pro</h2>
+                         <p class="text-muted small mb-4">Official Access Pass</p>
+                         <div class="qr-section">${qrContainer.innerHTML}</div>
+                         <h4 class="fw-bold mt-3">${label}</h4>
+                         <p class="small text-muted">Scan this pass at entry and exit points.</p>
+                         <button class="btn btn-primary btn-print rounded-pill px-4" onclick="window.print()">Confirm Print</button>
+                     </div>
+                 </body>
+             </html>
+         `);
+         printWindow.document.close();
+     }
+ 
+     /* ===================== LOGS ===================== */
+     function manualLogOut(index){
+         const time = new Date().toLocaleString([], { dateStyle:'short', timeStyle:'short' });
+         vehicles[index].logOutTime = time;
+         updateUI();
+     }
+ 
+     function deleteLog(index){
+         if(confirm('Remove this log entry?')){ vehicles.splice(index,1); updateUI(); }
+     }
+ 
+     function updateLogData(index, field, value){
+         vehicles[index][field] = value;
+         localStorage.setItem('vehicleLogs', JSON.stringify(vehicles));
+         updateUI();
+     }
+ 
+     function reassignSpot(index){
+         const v = vehicles[index];
+         if(v.logOutTime !== '---'){ alert('Vehicle has already exited.'); return; }
+         // Open modal in reassignment mode
+         pendingEntry = {...v, _reassignIndex: index};
+         document.getElementById('spotModalVehicle').innerText  = `${v.name} — ${v.plate}`;
+         document.getElementById('spotModalSubtitle').innerText = `Reassigning spot for Type: ${v.type}`;
+         document.getElementById('spotTypeLabel').innerText     = v.type;
+         document.getElementById('customSpotInput').value       = '';
+         selectedSpot = null;
+         renderSpotGrid(v.type);
+         setSpotMode('grid');
+         document.getElementById('spotModal').classList.add('show');
+ 
+         // Override confirm to do reassign
+         document.getElementById('spotModal').dataset.mode = 'reassign';
+         document.getElementById('spotModal').dataset.index = index;
+     }
+ 
+     /* ===================== UI UPDATE ===================== */
+     function updateUI(){
+         localStorage.setItem('vehicleLogs',  JSON.stringify(vehicles));
+         localStorage.setItem('helmetLogs',   JSON.stringify(helmetLogs));
+         localStorage.setItem('totalCounter', totalEntries);
+         localStorage.setItem('qrRegistry',  JSON.stringify(qrRegistry));
+         localStorage.setItem('pendingRegistrations', JSON.stringify(pendingRegs));
+ 
+         // Render Approvals (Pending Registrations from User POV)
+         const pendingList = document.getElementById('pendingList');
+         const badge = document.getElementById('approvalBadge');
+         if(badge) {
+             badge.innerText = pendingRegs.length;
+             badge.style.display = pendingRegs.length > 0 ? 'inline-block' : 'none';
+         }
+ 
+         if(pendingList) {
+             pendingList.innerHTML = pendingRegs.length ? pendingRegs.map((p, idx) => `
+                 <div class="col-12">
+                     <div class="card p-3 d-flex flex-column gap-3">
+                         <div class="d-flex align-items-center gap-3">
+                             <img src="${p.photo_blob || p.photo || 'https://via.placeholder.com/50?text=👤'}" class="rounded-circle" style="width:50px;height:50px;object-fit:cover;">
+                             <div class="flex-grow-1">
+                                 <h6 class="fw-bold mb-0">${p.name}</h6>
+                                 <div class="small text-muted">${p.plate} • ${p.vehicle_type || p.type} • Requested: ${p.submitted_at || p.submittedAt || 'Just now'}</div>
+                             </div>
+                             <div class="d-flex gap-2">
+                                 <button class="btn btn-sm btn-success rounded-pill px-3" onclick="processApproval(${idx}, true)">Approve</button>
+                                 <button class="btn btn-sm btn-outline-danger rounded-pill px-3" onclick="processApproval(${idx}, false)">Reject</button>
+                             </div>
+                         </div>
+                         ${p.carPhotos && p.carPhotos.length ? `<div class="d-flex flex-wrap gap-2">${p.carPhotos.slice(0,5).map(photo => `<img src="${photo}" style="width:64px;height:64px;object-fit:cover;border-radius:12px;border:1px solid #e2e8f0;">`).join('')}</div>` : ''}
+                     </div>
+                 </div>`).join('') : '<p class="text-center opacity-75 py-4">No pending registrations at the moment.</p>';
+         }
+ 
+         const counts = {};
+         const displayLimitLogs = 100;
+         const displayLimitRegistry = 60;
+ 
+         TYPES.forEach(t => counts[t] = 0);
+         // Count only active vehicles (Logged In)
+         vehicles.forEach(v => { 
+             if(v.logOutTime === "---" && counts[v.type] !== undefined) counts[v.type]++; 
+         });
+ 
+         document.getElementById('dashCars').innerText            = counts['Cars'] || 0;
+         document.getElementById('dashMotorcycle').innerText      = counts['Motorcycle'] || 0;
+         document.getElementById('dashPrivate').innerText         = counts['Private'] || 0;
+         document.getElementById('dashDeliveries').innerText = counts['Deliveries'] || 0;
+ 
+         // Update FULL indicators on dashboard
+         TYPES.forEach(t => {
+             const key = t.replace(/ /g,'');
+             const cap = parkingConfig[t]?.capacity || 0;
+             const current = counts[t] || 0;
+             const badge = document.getElementById(`status_${key}`);
+             if(badge) badge.style.display = (current >= cap) ? 'inline-block' : 'none';
+         });
+ 
+         // Registry list
+         const regList = document.getElementById('qrRegistryList');
+         const registryToDisplay = [...qrRegistry].reverse().slice(0, displayLimitRegistry);
+         
+         regList.innerHTML = qrRegistry.length ? registryToDisplay.map(q => `
+             <div class="col-md-6 col-lg-4">
+                 <div class="registry-badge" onclick="viewQrDetails(${q.id})">
+                     <button class="btn btn-sm btn-outline-danger border-0 position-absolute top-0 end-0 m-2" onclick="event.stopPropagation();deleteFromRegistry(${q.id})" title="Revoke">
+                         <span class="material-icons-round" style="font-size:15px;">close</span>
+                     </button>
+                     <img src="${q.photo || 'https://via.placeholder.com/50?text=👤'}" class="registry-thumb">
+                     <div style="flex:1">
+                         <div class="fw-bold">${q.name}</div>
+                         <div class="small opacity-75" style="font-family:'Space Mono',monospace;">${q.plate}</div>
+                         <div class="text-muted" style="font-size:0.65rem;">${q.regTime || ''}</div>
+                     </div>
+                     <span class="badge bg-primary rounded-pill">${q.type}</span>
+                 </div>
+             </div>`).join('') : '<p class="text-center opacity-75">No passes issued.</p>';
+ 
+         // Log table
+         const logsToDisplay = [...vehicles].reverse().slice(0, displayLimitLogs);
+         
+         const rows = logsToDisplay.map((v, i) => {
+             const originalIndex = vehicles.indexOf(v);
+             const inside = v.logOutTime === '---';
+             return `<tr>
+                 <td><input type="text" class="form-control form-control-sm border-0 bg-transparent fw-bold" value="${v.name||''}" onchange="updateLogData(${originalIndex},'name',this.value)"></td>
+                 <td><span style="font-family:'Space Mono',monospace;font-size:0.82rem;">${v.plate||''}</span></td>
+                 <td><span class="badge rounded-pill bg-light text-dark border">${v.type}</span></td>
+                 <td>
+                     <span class="fw-bold" style="font-family:'Space Mono',monospace;color:#2563eb;">${v.spot||'—'}</span>
+                     ${inside ? `<button class="btn btn-sm btn-link p-0 ms-1 text-primary" onclick="reassignSpot(${originalIndex})" title="Reassign spot"><span class="material-icons-round" style="font-size:15px;">edit_location</span></button>` : ''}
+                 </td>
+                 <td><input type="text" class="form-control form-control-sm border-0 bg-transparent" value="${v.notes||''}" onchange="updateLogData(${originalIndex},'notes',this.value)" placeholder="—"></td>
+                 <td class="small opacity-75">${v.logInTime}</td>
+                 <td class="small">
+                     ${inside ?
+                         `<button class="btn btn-sm btn-warning rounded-pill px-2" onclick="manualLogOut(${originalIndex})">Manual Out</button>` :
+                         `<span class="text-success fw-bold small">${v.logOutTime}</span>`}
+                 </td>
+                 <td>
+                     <button class="btn btn-sm btn-outline-danger border-0" onclick="deleteLog(${originalIndex})">
+                         <span class="material-icons-round" style="font-size:18px;">delete_outline</span>
+                     </button>
+                 </td>
+             </tr>`;
+         });
+         document.getElementById('logTableBody').innerHTML = rows.join('');
+ 
+         if(typeChart) updateCharts(counts);
+         updateParkingStatus();
+         if(document.getElementById('parking-map-view').classList.contains('active')) renderParkingMap();
+     }
+ 
+    async function processApproval(index, isApproved) {
+         const req = pendingRegs[index];
+         if (!req) return;
+         if (isApproved) {
+             const approvedPass = {
+                 id: req.id,
+                 name: req.name,
+                 plate: req.plate,
+                 type: req.vehicle_type || req.type || 'Private',
+                 phone: req.phone || '',
+                 messenger: req.messenger || '',
+                 helmet: req.helmet || '',
+                 regTime: new Date().toLocaleString(),
+                 photo: req.photo_blob || req.photo || '',
+                 carPhotos: req.carPhotos || []
+             };
+             qrRegistry.push(approvedPass);
+             alert(`Registration for ${req.name} has been approved.`);
+         } else {
+             alert(`Registration for ${req.name} was rejected.`);
+         }
+         pendingRegs.splice(index, 1);
+         updateUI();
+     }
+ 
+     /* ===================== CHARTS ===================== */
+     function initCharts(){
+         const ctx1 = document.getElementById('trafficChart').getContext('2d');
+         trafficChart = new Chart(ctx1, {
+             type:'line',
+             data:{ labels:['00:00','06:00','08:00','12:00','16:00','20:00','24:00'],
+                 datasets:[{label:'Traffic',data:[0,0,0,0,0,0,0],borderColor:'#3730a3',backgroundColor:'rgba(55, 48, 163, 0.08)',tension:0.4,fill:true,pointRadius:4}]},
+             options:{responsive:true,plugins:{legend:{display:false}}}
+         });
+ 
+         const ctx2 = document.getElementById('typeChart').getContext('2d');
+         typeChart = new Chart(ctx2, {
+             type:'doughnut',
+             data:{
+                 labels: TYPES,
+                 datasets:[{data:TYPES.map(()=>0), backgroundColor:['#3730a3','#4f46e5','#6366f1','#818cf8','#a5b4fc','#c7d2fe','#e0e7ff']}]
+             },
+             options:{responsive:true,plugins:{legend:{position:'right',labels:{boxWidth:12,font:{size:11}}}}}
+         });
+ 
+         const ctx3 = document.getElementById('parkingStatusChart').getContext('2d');
+         parkingStatusChart = new Chart(ctx3, {
+             type:'bar',
+             data:{
+                 labels: TYPES,
+                 datasets:[
+                     {label:'Used',      data:TYPES.map(()=>0), backgroundColor:'#3730a3'},
+                     {label:'Available', data:TYPES.map(()=>0), backgroundColor:'#e2e8f0'}
+                 ]
+             },
+             options:{responsive:true,scales:{x:{stacked:false},y:{beginAtZero:true}},plugins:{legend:{position:'top'}}}
+         });
+ 
+         const ctx4 = document.getElementById('helmetStatusChart').getContext('2d');
+         helmetStatusChart = new Chart(ctx4, {
+             type:'bar',
+             data:{
+                 labels: TYPES,
+                 datasets:[
+                     {label:'Stored',    data:TYPES.map(()=>0), backgroundColor:'#4f46e5'},
+                     {label:'Available', data:TYPES.map(()=>0), backgroundColor:'#f1f5f9'}
+                 ]
+             },
+             options:{responsive:true,scales:{x:{stacked:false},y:{beginAtZero:true}},plugins:{legend:{position:'top'}}}
+         });
+     }
+ 
+     function updateCharts(counts){
+         typeChart.data.datasets[0].data = TYPES.map(t => counts[t] || 0);
+         typeChart.update();
+     }
+ 
+     function updateMonitorCharts(){
+         if(!parkingStatusChart || !helmetStatusChart) return;
+         const usedV = TYPES.map(t => getActiveCount(t));
+         const freeV = TYPES.map(t => Math.max((parkingConfig[t]?.capacity||0) - getActiveCount(t), 0));
+         parkingStatusChart.data.datasets[0].data = usedV;
+         parkingStatusChart.data.datasets[1].data = freeV;
+         parkingStatusChart.update();
+ 
+         const usedH = TYPES.map(t => getHelmetActiveCount(t));
+         const freeH = TYPES.map(t => Math.max((helmetConfig[t]?.capacity||0) - getHelmetActiveCount(t), 0));
+         helmetStatusChart.data.datasets[0].data = usedH;
+         helmetStatusChart.data.datasets[1].data = freeH;
+         helmetStatusChart.update();
+     }
+ 
+     /* ===================== BACKGROUND ===================== */
+     function changeBackground(event){
+         const file = event.target.files[0];
+         if(!file) return;
+         const reader = new FileReader();
+         reader.onload = () => {
+             const bg = document.getElementById('bg-canvas');
+             bg.style.backgroundImage = `url(${reader.result})`;
+             bg.style.backgroundSize  = 'cover';
+             try { localStorage.setItem('customBg', reader.result); }
+             catch(e){ alert('Image too large — applied now but won\'t persist after refresh.'); }
+         };
+         reader.readAsDataURL(file);
+     }
+ 
+     /* ===================== REPORTS ===================== */
+     function generateReport(){
+         const period    = document.getElementById('reportPeriod').value;
+         const dateStr   = document.getElementById('reportDate').value;
+         if(!dateStr){ alert('Select a date.'); return; }
+         const selDate = new Date(dateStr);
+ 
+         let filtered = [], title = '';
+         if(period==='daily'){
+             filtered = vehicles.filter(v => {
+                 const d = v.timestamp ? new Date(v.timestamp) : new Date(v.logInTime);
+                 return d.toDateString() === selDate.toDateString();
+             });
+             title = `Daily — ${selDate.toLocaleDateString()}`;
+         } else if(period==='weekly'){
+             const s = new Date(selDate); s.setDate(selDate.getDate()-selDate.getDay());
+             const e = new Date(s); e.setDate(s.getDate()+6);
+             filtered = vehicles.filter(v => { 
+                 const d = v.timestamp ? new Date(v.timestamp) : new Date(v.logInTime);
+                 return d>=s&&d<=e; 
+             });
+             title = `Weekly — ${s.toLocaleDateString()} to ${e.toLocaleDateString()}`;
+         } else if(period==='monthly'){
+             const s = new Date(selDate.getFullYear(), selDate.getMonth(), 1);
+             const e = new Date(selDate.getFullYear(), selDate.getMonth()+1, 0);
+             filtered = vehicles.filter(v => { 
+                 const d = v.timestamp ? new Date(v.timestamp) : new Date(v.logInTime);
+                 return d>=s&&d<=e; 
+             });
+             title = `Monthly — ${s.toLocaleString('default',{month:'long'})} ${selDate.getFullYear()}`;
+         } else {
+             const s = new Date(selDate.getFullYear(),0,1), e = new Date(selDate.getFullYear(),11,31);
+             filtered = vehicles.filter(v => { 
+                 const d = v.timestamp ? new Date(v.timestamp) : new Date(v.logInTime);
+                 return d>=s&&d<=e; 
+             });
+             title = `Yearly — ${selDate.getFullYear()}`;
+         }
+ 
+         const exits  = filtered.filter(v => v.logOutTime !== '---').length;
+         const active = filtered.length - exits;
+         const tCounts = {};
+         filtered.forEach(v => tCounts[v.type] = (tCounts[v.type]||0)+1);
+ 
+         document.getElementById('reportContent').innerHTML = `
+             <h4 class="fw-bold mb-3">${title}</h4>
+             <div class="row g-3 mb-4">
+                 <div class="col-6 col-md-3"><div class="card p-3 text-center"><p class="small text-muted mb-1">Entries</p><h3 class="fw-bold">${filtered.length}</h3></div></div>
+                 <div class="col-6 col-md-3"><div class="card p-3 text-center"><p class="small text-muted mb-1">Exits</p><h3 class="fw-bold">${exits}</h3></div></div>
+                 <div class="col-6 col-md-3"><div class="card p-3 text-center"><p class="small text-muted mb-1">Still Inside</p><h3 class="fw-bold">${active}</h3></div></div>
+                 <div class="col-6 col-md-3"><div class="card p-3 text-center"><p class="small text-muted mb-1">Pass Registry</p><h3 class="fw-bold">${qrRegistry.length}</h3></div></div>
+             </div>
+             <h6 class="fw-bold mb-2">By Type</h6>
+             <table class="table table-sm mb-4"><thead><tr><th>Type</th><th>Count</th></tr></thead><tbody>
+                 ${Object.keys(tCounts).map(t => `<tr><td>${t}</td><td>${tCounts[t]}</td></tr>`).join('')}
+             </tbody></table>
+             <h6 class="fw-bold mb-2">Log Details</h6>
+             <table class="table table-sm table-striped"><thead><tr><th>Owner</th><th>Plate</th><th>Type</th><th>Spot</th><th>Entry</th><th>Exit</th></tr></thead><tbody>
+                 ${filtered.map(v=>`<tr><td>${v.name||'—'}</td><td style="font-family:'Space Mono',monospace;">${v.plate||'—'}</td><td>${v.type}</td><td>${v.spot||'—'}</td><td>${v.logInTime}</td><td>${v.logOutTime}</td></tr>`).join('')}
+             </tbody></table>`;
+     }
+ 
+     function printReport(){
+         const content = document.getElementById('reportContent').innerHTML;
+         if(!content){ alert('Generate a report first.'); return; }
+         const w = window.open('','_blank');
+         w.document.write(`<html><head><title>V-Security Pro Report</title>
+         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+         <style>body{margin:20px;font-family:Arial,sans-serif;}table{width:100%;border-collapse:collapse;}th,td{border:1px solid #ddd;padding:6px;}th{background:#f5f5f5;}</style>
+         </head><body><h2>V-Security Pro Report</h2>${content}</body></html>`);
+         w.document.close(); w.print();
+     }
+
+     // Synchronization logic for multi-tab support
+     window.addEventListener('storage', (e) => {
+         const syncKeys = ['vehicleLogs', 'helmetLogs', 'qrRegistry', 'pendingRegistrations', 'totalCounter', 'customBg'];
+         if (syncKeys.includes(e.key)) {
+             const oldPendingCount = pendingRegs.length;
+             
+             vehicles = JSON.parse(localStorage.getItem('vehicleLogs')) || [];
+             helmetLogs = JSON.parse(localStorage.getItem('helmetLogs')) || [];
+             qrRegistry = JSON.parse(localStorage.getItem('qrRegistry')) || [];
+             pendingRegs = JSON.parse(localStorage.getItem('pendingRegistrations')) || [];
+             totalEntries = parseInt(localStorage.getItem('totalCounter')) || 0;
+
+             if (e.key === 'customBg') {
+                 document.getElementById('bg-canvas').style.backgroundImage = `url(${e.newValue})`;
+             }
+
+             // Notification for new registration arriving from the Portal
+             if (e.key === 'pendingRegistrations' && pendingRegs.length > oldPendingCount) {
+                 showPopup('notifications_active', '#4f46e5', 'New Registration!', 'Check Approvals tab');
+                 playScanSound('success');
+             }
+
+             updateUI();
+         }
+     });
+    </script>
+</body>
+</html>

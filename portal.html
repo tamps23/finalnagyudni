@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>V-Security Pro | User Portal</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <style>
+        body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; margin: 0; color: #111827; }
+        .portal-header { background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%); color: white; padding: 28px 24px; }
+        .portal-card { border-radius: 24px; background: white; box-shadow: 0 20px 60px rgba(15, 23, 42, 0.08); border: 1px solid rgba(226,232,240,0.7); }
+        .portal-status { border-radius: 14px; padding: 14px 18px; margin-top: 18px; font-weight: 600; }
+        .portal-status.ready { background: rgba(241,245,249,0.9); color: #475569; }
+        .portal-status.success { background: #dcfce7; color: #166534; border: 1px solid #a7f3d0; }
+        .portal-status.error { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+        #reader { width: 100%; border-radius: 16px; overflow: hidden; background: #000; }
+        #reader video { border-radius: 12px !important; }
+        .form-label { font-weight: 700; }
+    </style>
+</head>
+<body>
+    <div class="portal-header text-center">
+
+    <script src="/client-sync.js"></script>
+        <h1 class="fw-bold mb-2">V-Security User Portal</h1>
+        <p class="mb-0 opacity-75">Register for access and scan your approved QR for entry and exit.</p>
+    </div>
+
+    <div class="container py-4">
+        <div class="row gy-4">
+            <div class="col-lg-5">
+                <div class="portal-card p-4">
+                    <h4 class="fw-bold mb-3">Request Registration</h4>
+                    <p class="text-muted small mb-4">Your request will be sent for admin approval before your QR pass is activated.</p>
+                    <div class="mb-3">
+                        <label class="form-label">Full Name</label>
+                        <input type="text" id="portalName" class="form-control" placeholder="Full Name">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Plate Number</label>
+                        <input type="text" id="portalPlate" class="form-control" placeholder="ABC-1234">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Vehicle Type</label>
+                        <select id="portalType" class="form-select">
+                            <option value="Cars">Cars</option>
+                            <option value="Motorcycle">Motorcycle</option>
+                            <option value="Private">Private</option>
+                            <option value="Deliveries">Deliveries</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Contact Number</label>
+                        <input type="text" id="portalPhone" class="form-control" placeholder="Optional">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Helmet / Details</label>
+                        <input type="text" id="portalHelmet" class="form-control" placeholder="Optional">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Profile Picture <span class="text-danger">*</span></label>
+                        <input type="file" id="portalProfilePhoto" class="form-control" accept="image/*" onchange="handleProfilePhoto(this)">
+                        <div id="portalProfilePreview" class="mt-3" style="min-height:80px;"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Optional Car Photos (up to 5)</label>
+                        <input type="file" id="portalCarPhotos" class="form-control" accept="image/*" multiple onchange="handleCarPhotos(this)">
+                        <div id="portalCarPreview" class="d-flex flex-wrap gap-2 mt-3"></div>
+                        <p class="text-muted small mt-2">You may attach up to five photos of the car, plate, or accessories.</p>
+                    </div>
+                    <button class="btn btn-primary w-100 rounded-pill" onclick="submitRegistrationRequest()">Submit for Approval</button>
+                    <div id="portalMessage" class="portal-status ready mt-4">No active request yet.</div>
+                </div>
+            </div>
+            <div class="col-lg-7">
+                <div class="portal-card p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <h4 class="fw-bold mb-1">Scan Entry / Exit</h4>
+                            <p class="text-muted small mb-0">Only approved QR passes are accepted.</p>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-sm btn-outline-primary rounded-pill" id="portalStartScanBtn" onclick="startScanner()"><span class="material-icons-round align-middle" style="font-size:16px;">videocam</span> Start Camera</button>
+                            <button class="btn btn-sm btn-outline-danger rounded-pill" id="portalStopScanBtn" onclick="stopScanner()" style="display:none;"><span class="material-icons-round align-middle" style="font-size:16px;">videocam_off</span> Stop</button>
+                        </div>
+                    </div>
+                    <div id="portalScannerContainer" style="display:none;margin-bottom:18px;"><div id="reader"></div></div>
+                    <div id="portalScanStatus" class="portal-status ready"><span class="material-icons-round align-middle" style="font-size:18px;vertical-align:middle;">qr_code_scanner</span> Camera stopped. Click start to scan.</div>
+                    <div class="manual-entry-section mt-4 p-3 rounded-4" style="background:#f8fafc;border:1px dashed rgba(59,130,246,0.35);">
+                        <p class="fw-bold small mb-2 text-primary"><span class="material-icons-round align-middle" style="font-size:15px;">keyboard</span> Manual Entry</p>
+                        <div class="input-group">
+                            <textarea id="portalManualQrInput" class="form-control" rows="3" placeholder="Plate number or QR JSON"></textarea>
+                            <button class="btn btn-outline-primary fw-bold" onclick="processManualEntry()">Process</button>
+                        </div>
+                        <p class="text-muted mt-2 mb-0" style="font-size:0.78rem;">If camera scanning doesn't work, paste approved QR text or enter plate number.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="portal-card p-4">
+                    <h5 class="fw-bold mb-3">Portal Instructions</h5>
+                    <ul class="mb-0" style="padding-left: 1.1rem;">
+                        <li>Submit your registration request and wait for admin approval.</li>
+                        <li>Approved registrations appear as valid QR passes.</li>
+                        <li>After approval, scan your QR or enter plate number to log entry/exit.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let qrRegistry = JSON.parse(localStorage.getItem('qrRegistry')) || [];
+        let pendingRegs = JSON.parse(localStorage.getItem('pendingRegistrations')) || [];
+        let vehicles = JSON.parse(localStorage.getItem('vehicleLogs')) || [];
+        let helmetLogs = JSON.parse(localStorage.getItem('helmetLogs')) || [];
+        let parkingConfig = JSON.parse(localStorage.getItem('parkingConfig')) || { Cars: { capacity: 20 }, Motorcycle: { capacity: 30 }, Private: { capacity: 15 }, Deliveries: { capacity: 10 } };
+        let helmetConfig = JSON.parse(localStorage.getItem('helmetConfig')) || { Cars: { capacity: 5 }, Motorcycle: { capacity: 30 }, Private: { capacity: 5 }, Deliveries: { capacity: 5 } };
+        let html5QrcodeScanner = null;
+        let lastScannedCode = '';
+        let lastScannedTime = 0;
+        let totalEntries = parseInt(localStorage.getItem('totalCounter')) || 0;
+
+        let portalProfilePhotoBase64 = '';
+        let portalCarPhotosBase64 = [];
+
+        function savePortalState(){
+            localStorage.setItem('pendingRegistrations', JSON.stringify(pendingRegs));
+            localStorage.setItem('qrRegistry', JSON.stringify(qrRegistry));
+            localStorage.setItem('vehicleLogs', JSON.stringify(vehicles));
+            localStorage.setItem('helmetLogs', JSON.stringify(helmetLogs));
+            localStorage.setItem('totalCounter', totalEntries);
+        }
+
+        function updatePortalStatus(message, type = 'ready'){
+            const el = document.getElementById('portalScanStatus');
+            el.className = `portal-status ${type}`;
+            el.innerHTML = message;
+        }
+
+        function handleProfilePhoto(input){
+            const file = input.files[0];
+            if(!file){ portalProfilePhotoBase64 = ''; document.getElementById('portalProfilePreview').innerHTML = ''; return; }
+            const reader = new FileReader();
+            reader.onload = () => {
+                portalProfilePhotoBase64 = reader.result;
+                document.getElementById('portalProfilePreview').innerHTML = `<img src="${portalProfilePhotoBase64}" style="width:100px;height:100px;border-radius:14px;object-fit:cover;border:1px solid #d1d5db;">`;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function handleCarPhotos(input){
+            const files = Array.from(input.files).slice(0, 5);
+            portalCarPhotosBase64 = [];
+            const preview = document.getElementById('portalCarPreview');
+            preview.innerHTML = '';
+            files.forEach(file => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    portalCarPhotosBase64.push(reader.result);
+                    const img = document.createElement('img');
+                    img.src = reader.result;
+                    img.style.width = '100px';
+                    img.style.height = '100px';
+                    img.style.objectFit = 'cover';
+                    img.style.borderRadius = '14px';
+                    img.style.border = '1px solid #d1d5db';
+                    preview.appendChild(img);
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function submitRegistrationRequest(){
+            const name = document.getElementById('portalName').value.trim();
+            const plate = document.getElementById('portalPlate').value.trim().toUpperCase();
+            const type = document.getElementById('portalType').value;
+            const phone = document.getElementById('portalPhone').value.trim();
+            const helmet = document.getElementById('portalHelmet').value.trim();
+            if(!name || !plate){
+                document.getElementById('portalMessage').className = 'portal-status error mt-4';
+                document.getElementById('portalMessage').innerText = 'Name and plate are required.';
+                return;
+            }
+            if(!portalProfilePhotoBase64){
+                document.getElementById('portalMessage').className = 'portal-status error mt-4';
+                document.getElementById('portalMessage').innerText = 'A profile picture is required before submitting.';
+                return;
+            }
+            if(qrRegistry.some(item => item.plate.toUpperCase() === plate)){
+                document.getElementById('portalMessage').className = 'portal-status error mt-4';
+                document.getElementById('portalMessage').innerText = 'This plate already has an approved pass.';
+                return;
+            }
+            const approvedPass = {
+                id: Date.now() + Math.floor(Math.random() * 1000),
+                name,
+                plate,
+                type,
+                phone,
+                helmet,
+                photo: portalProfilePhotoBase64,
+                carPhotos: portalCarPhotosBase64.slice(0, 5),
+                regTime: new Date().toLocaleString(),
+                status: 'approved'
+            };
+            qrRegistry.push(approvedPass);
+            savePortalState();
+            document.getElementById('portalMessage').className = 'portal-status success mt-4';
+            document.getElementById('portalMessage').innerText = 'Registration approved instantly. You can scan or enter your plate now.';
+            ['portalName','portalPlate','portalPhone','portalHelmet'].forEach(id => document.getElementById(id).value = '');
+            document.getElementById('portalProfilePhoto').value = '';
+            document.getElementById('portalCarPhotos').value = '';
+            portalProfilePhotoBase64 = '';
+            portalCarPhotosBase64 = [];
+            document.getElementById('portalProfilePreview').innerHTML = '';
+            document.getElementById('portalCarPreview').innerHTML = '';
+        }
+
+        function getActiveCount(type){
+            return vehicles.filter(v => v.type === type && v.logOutTime === '---').length;
+        }
+        function getAllSpots(type){
+            const cap = parkingConfig[type]?.capacity || 10;
+            const prefix = type.replace(/ /g,'').charAt(0).toUpperCase();
+            return Array.from({length: cap}, (_,i) => `${prefix}-${i+1}`);
+        }
+        function getOccupiedSpots(type){
+            return new Set(vehicles.filter(v => v.type === type && v.logOutTime === '---' && v.spot).map(v => v.spot));
+        }
+        function getAutoSpot(type){
+            const all = getAllSpots(type);
+            const occupied = getOccupiedSpots(type);
+            const spot = all.find(s => !occupied.has(s));
+            return spot || `${type.charAt(0).toUpperCase()}-OVF-${getActiveCount(type) + 1}`;
+        }
+
+        function startScanner(){
+            document.getElementById('portalScannerContainer').style.display = 'block';
+            document.getElementById('portalStartScanBtn').style.display = 'none';
+            document.getElementById('portalStopScanBtn').style.display = 'inline-flex';
+            updatePortalStatus('Starting camera...','ready');
+            if(!html5QrcodeScanner){ html5QrcodeScanner = new Html5Qrcode('reader'); }
+            const config = { fps: 10, qrbox: { width: 240, height: 240 } };
+            const cameraConfig = { facingMode: 'environment' };
+            html5QrcodeScanner.start(cameraConfig, config, decodedText => onScanSuccess(decodedText), err => {})
+                .then(() => updatePortalStatus('Camera active. Point at an approved QR pass.', 'success'))
+                .catch(err => { updatePortalStatus('Camera error: ' + err, 'error'); stopScanner(); });
+        }
+
+        function stopScanner(){
+            if(html5QrcodeScanner && html5QrcodeScanner.getState() === 2){
+                html5QrcodeScanner.stop().then(() => {
+                    document.getElementById('portalScannerContainer').style.display = 'none';
+                    document.getElementById('portalStartScanBtn').style.display = 'inline-flex';
+                    document.getElementById('portalStopScanBtn').style.display = 'none';
+                    updatePortalStatus('Camera stopped. Click start to scan again.', 'ready');
+                }).catch(() => {
+                    document.getElementById('portalScannerContainer').style.display = 'none';
+                    document.getElementById('portalStartScanBtn').style.display = 'inline-flex';
+                    document.getElementById('portalStopScanBtn').style.display = 'none';
+                });
+            } else {
+                document.getElementById('portalScannerContainer').style.display = 'none';
+                document.getElementById('portalStartScanBtn').style.display = 'inline-flex';
+                document.getElementById('portalStopScanBtn').style.display = 'none';
+                updatePortalStatus('Camera stopped. Click start to scan again.', 'ready');
+            }
+        }
+
+        function normalizePortalPlate(value){
+            return String(value || '').trim().toUpperCase();
+        }
+
+        function ensurePortalAuthorizedPass(data){
+            if(!data || (typeof data !== 'object' && typeof data !== 'string')) return null;
+
+            let payload = data;
+            if(typeof payload === 'string'){
+                const trimmed = payload.trim();
+                if(!trimmed) return null;
+                try { payload = JSON.parse(trimmed); } catch(e) { payload = { plate: trimmed.toUpperCase(), name: 'Visitor', type: 'Private' }; }
+            }
+
+            const plate = normalizePortalPlate(payload.plate || payload.plateNumber || payload.licensePlate);
+            const id = payload.id ? String(payload.id) : '';
+            let reg = null;
+
+            if(id){
+                reg = qrRegistry.find(item => String(item.id) === id);
+            }
+            if(!reg && plate){
+                reg = qrRegistry.find(item => normalizePortalPlate(item.plate) === plate);
+            }
+
+            if(reg){
+                return reg;
+            }
+
+            if(!plate){
+                return null;
+            }
+
+            const createdPass = {
+                id: payload.id || Date.now() + Math.floor(Math.random() * 10000),
+                name: payload.name || 'Visitor',
+                plate,
+                type: payload.type || 'Private',
+                phone: payload.phone || '',
+                helmet: payload.helmet || '',
+                regTime: new Date().toLocaleString(),
+                photo: payload.photo || '',
+                carPhotos: payload.carPhotos || [],
+                status: 'approved',
+                isTemporary: true
+            };
+            qrRegistry.push(createdPass);
+            savePortalState();
+            return createdPass;
+        }
+
+        function processManualEntry(){
+            const raw = document.getElementById('portalManualQrInput').value.trim();
+            if(!raw){ updatePortalStatus('Enter plate number or approved QR data.', 'error'); return; }
+            const lines = raw.split('\n').filter(l => l.trim());
+            lines.forEach(line => {
+                let data = null;
+                try { data = JSON.parse(line.trim()); } catch(e) { data = null; }
+                if(!data || typeof data !== 'object'){
+                    data = { plate: line.trim().toUpperCase(), name: 'Manual Entry', type: 'Private' };
+                }
+                onScanSuccess(typeof data === 'string' ? data : JSON.stringify(data));
+            });
+            document.getElementById('portalManualQrInput').value = '';
+        }
+
+        function onScanSuccess(decodedText){
+            const nowTs = Date.now();
+            if(decodedText === lastScannedCode && nowTs - lastScannedTime < 1000) return;
+            lastScannedCode = decodedText; lastScannedTime = nowTs;
+            let data = null;
+            try { data = JSON.parse(decodedText); } catch(e) { data = null; }
+            if(!data || typeof data !== 'object'){
+                data = { plate: decodedText.trim().toUpperCase(), name: 'Visitor', type: 'Private' };
+            }
+            handlePortalScan(data);
+        }
+
+        function handlePortalScan(data){
+            if(!data || (!data.plate && !data.id)){
+                updatePortalStatus('Invalid QR data. Use an approved pass or enter plate manually.', 'error');
+                return;
+            }
+            const reg = ensurePortalAuthorizedPass(data);
+            if(!reg){
+                updatePortalStatus('This pass could not be validated. Try again or enter a plate manually.', 'error');
+                return;
+            }
+            const activeIndex = vehicles.findIndex(v => v.logOutTime === '---' && ((data.id && v.id === data.id) || (data.plate && v.plate.toUpperCase() === data.plate.toUpperCase())));
+            if(activeIndex !== -1){
+                vehicles[activeIndex].logOutTime = new Date().toLocaleString([], { dateStyle:'short', timeStyle:'short' });
+                savePortalState();
+                updatePortalStatus(`Goodbye ${reg.name}! Exit recorded.`, 'success');
+                return;
+            }
+            const spot = getAutoSpot(reg.type);
+            finishEntry(reg, spot);
+        }
+
+        function finishEntry(reg, spot){
+            vehicles.push({
+                id: reg.id,
+                name: reg.name,
+                plate: reg.plate,
+                type: reg.type,
+                spot,
+                logInTime: new Date().toLocaleString([], { dateStyle:'short', timeStyle:'short' }),
+                logOutTime: '---',
+                notes: ''
+            });
+            totalEntries += 1;
+            savePortalState();
+            updatePortalStatus(`Welcome ${reg.name}! Assigned spot ${spot}.`, 'success');
+        }
+
+        window.addEventListener('storage', (event) => {
+            if(event.key === 'pendingRegistrations') pendingRegs = JSON.parse(event.newValue || '[]') || [];
+            if(event.key === 'qrRegistry') qrRegistry = JSON.parse(event.newValue || '[]') || [];
+            if(event.key === 'vehicleLogs') vehicles = JSON.parse(event.newValue || '[]') || [];
+            if(event.key === 'helmetLogs') helmetLogs = JSON.parse(event.newValue || '[]') || [];
+            if(event.key === 'totalCounter') totalEntries = parseInt(event.newValue) || 0;
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            updatePortalStatus('Ready. Submit registration and wait for approval. Then scan your approved QR.', 'ready');
+        });
+    </script>
+</body>
+</html>
